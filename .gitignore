@@ -2,6 +2,9 @@
 /dev/components.d.ts
 /cypress/screenshots
 
+# Dependencies
+node_modules/
+
 # Built files
 /es5/
 /lib/
