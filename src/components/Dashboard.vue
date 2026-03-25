@@ -27,7 +27,6 @@
 
   const router = useRouter()
   const API_BASE_URL = '/api'
-  const logs = ref<string[]>([])
 
   type ClienteOptions = {
     headers?: Record<string, string>
@@ -38,12 +37,6 @@
       .split('; ')
       .find(row => row.startsWith(name + '='))
       ?.split('=')[1] || ''
-  }
-
-  function logLine (message: string) {
-    logs.value.push(message)
-    // Mantener también el log en consola
-    console.log(message)
   }
 
   async function parseBody (response: Response) {
@@ -98,7 +91,7 @@
   }
 
   async function logout () {
-    logLine('Realizando logout...')
+    console.log('Realizando logout...')
     const logoutResponse = await cliente.post<{
       mensaje?: string
     }>(
@@ -111,8 +104,8 @@
       },
     )
 
-    logLine(`✅ Logout exitoso: ${logoutResponse.data.mensaje ?? '(sin mensaje)'}`)
-    logLine('')
+    console.log(`✅ Logout exitoso: ${logoutResponse.data.mensaje ?? '(sin mensaje)'}`)
+    console.log('')
     await router.push('/')
   }
 
