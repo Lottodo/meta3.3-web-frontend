@@ -1,7 +1,15 @@
 <template>
   <v-container class="py-10">
     <div class="d-flex align-center justify-space-between">
-      <h1 class="text-h3">Dashboard</h1>
+      <div class="d-flex align-center ga-3">
+        <img
+          alt="Logo"
+          height="44"
+          src="/arc.png"
+          width="44"
+        >
+        <h1 class="text-h3 ma-0">Lista de Tareas</h1>
+      </div>
       <v-btn
         prepend-icon="mdi-logout"
         variant="tonal"
@@ -10,19 +18,60 @@
         Cerrar sesión
       </v-btn>
     </div>
-    <div class="mt-6 d-flex ga-3">
-      <v-btn
-        color="primary"
-      >
-        Probar API
-      </v-btn>
+
+    <div class="d-flex mt-6 ga-4 flex-wrap">
+      <v-card class="flex-1-1-0" min-width="320" variant="elevated">
+        <v-card-title class="text-h5">Tareas</v-card-title>
+        <v-card-text>
+          <div class="d-flex align-center ga-2">
+            <v-text-field
+              autocomplete="off"
+              class="flex-grow-1"
+              label="Buscar tarea"
+              placeholder="Escribe para buscar una tarea..."
+              variant="underlined"
+            />
+            <v-btn
+              color="primary"
+              prepend-icon="mdi-magnify"
+              variant="tonal"
+            >
+              Buscar
+            </v-btn>
+          </div>
+        </v-card-text>
+      </v-card>
+
+      <v-card class="flex-1-1-0" min-width="320" variant="elevated">
+        <v-card-title class="text-h5">Detalle de la tarea</v-card-title>
+        <v-card-text>
+          <v-text-field
+            autocomplete="off"
+            label="Título"
+            placeholder="Selecciona una tarea para ver sus detalles"
+            readonly
+          />
+          <v-textarea
+            auto-grow
+            autocomplete="off"
+            label="Descripción"
+            placeholder="(sin selección)"
+            readonly
+          />
+          <v-text-field
+            autocomplete="off"
+            label="Estado"
+            placeholder="(pendiente / completada)"
+            readonly
+          />
+        </v-card-text>
+      </v-card>
     </div>
 
   </v-container>
 </template>
 
 <script setup lang="ts">
-  import { ref } from 'vue'
   import { useRouter } from 'vue-router'
 
   const router = useRouter()

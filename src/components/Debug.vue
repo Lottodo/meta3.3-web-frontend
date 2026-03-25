@@ -53,7 +53,6 @@
   // Usar proxy de Vite: /api -> http://localhost:3003
   const API_BASE_URL = '/api'
 
-  const csrfToken = ref('')
   const isRunning = ref(false)
   const status = ref('')
   const hasError = ref(false)
@@ -157,9 +156,8 @@
 
       logLine('✅ Login exitoso')
       logLine(`Usuario: ${JSON.stringify(loginResponse.data.usuario)}`)
-      csrfToken.value = loginResponse.data.csrfToken ?? ''
       if (getCookie('csrf_token')) {
-        logLine(`Token CSRF recibido: ${csrfToken.value.slice(0, 20)}...`)
+        logLine(`Token CSRF recibido: ${getCookie('csrf_token').slice(0, 20)}...`)
       } else {
         logLine('Token CSRF no recibido en la respuesta')
       }
