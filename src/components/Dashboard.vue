@@ -1,55 +1,6 @@
 <template>
   <v-container class="py-10">
-    <h1 class="text-h3">Lista de Tareas</h1>
-
-    <v-form ref="form">
-      <v-text-field
-        v-model="email"
-        label="Correo electrónico"
-        required
-        :rules="emailRules"
-      />
-
-      <v-text-field
-        v-model="password"
-        label="Contraseña"
-        required
-        :rules="passwordRules"
-      />
-
-      <div class="d-flex flex-column">
-        <v-btn
-          block
-          class="mt-4"
-          color="success"
-          @click="validate"
-        >
-          Iniciar sesión
-        </v-btn>
-
-        <!--
-        <v-btn
-          block
-          class="mt-4"
-          color="error"
-          @click="reset"
-        >
-          Reset Form
-        </v-btn>
-
-        <v-btn
-          block
-          class="mt-4"
-          color="warning"
-          @click="resetValidation"
-        >
-          Reset Validation
-        </v-btn>
-        -->
-
-      </div>
-    </v-form>
-
+    <h1 class="text-h3">Dashboard</h1>
     <div class="mt-6 d-flex ga-3">
       <v-btn
         color="primary"
@@ -89,28 +40,6 @@
 
 <script setup lang="ts">
   import { computed, ref } from 'vue'
-
-  const form = ref()
-
-  const email = ref('')
-  const emailRules = ref([
-    (v: any) => !!v || 'Introduzca su correo electrónico',
-    (v: any) => (v && v.length <= 254) || 'El correo es demasiado largo',
-    (v: any) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) || 'Correo electrónico inválido',
-  ])
-  const password = ref('')
-  const passwordRules = ref([
-    (v: any) => !!v || 'Introduzca su contraseña',
-    (v: any) => (v && v.length >= 8) || 'La contraseña debe tener al menos 8 caracteres',
-    (v: any) => (v && v.length <= 128) || 'Contraseña demasiado larga',
-  ])
-
-  async function validate () {
-    const { valid } = await form.value.validate()
-
-    // if (valid) alert('Form is valid')
-    if (valid) probarAPI(String(email.value))
-  }
 
   // Usar proxy de Vite: /api -> http://localhost:3003
   const API_BASE_URL = '/api'
@@ -206,26 +135,6 @@
     hasError.value = false
 
     try {
-      // 1. Login para obtener tokens
-      logLine('1. Realizando login...')
-      const loginResponse = await cliente.post<{
-        usuario?: unknown
-        csrfToken?: string
-      }>(
-        `${API_BASE_URL}/auth/login`,
-        { email: email },
-      )
-
-      logLine('✅ Login exitoso')
-      logLine(`Usuario: ${JSON.stringify(loginResponse.data.usuario)}`)
-      csrfToken.value = loginResponse.data.csrfToken ?? ''
-      if (getCookie('csrf_token')) {
-        logLine(`Token CSRF recibido: ${csrfToken.value.slice(0, 20)}...`)
-      } else {
-        logLine('Token CSRF no recibido en la respuesta')
-      }
-      logLine('Cookies configuradas automáticamente por el navegador\n')
-
       // 2. Verificar autenticación
       logLine('2. Verificando autenticación...')
       const verifyResponse = await cliente.get<{
@@ -314,7 +223,6 @@
       logLine(`  Descripción: ${tareaEspecifica.data.tarea?.descripcion ?? '(sin descripción)'}`)
       logLine(`  Estado: ${tareaEspecifica.data.tarea?.completada ? 'Completada' : 'Pendiente'}\n`)
 
-      /*
       // 7. Intentar acceder sin token CSRF (debería fallar)
       logLine('7. Probando protección CSRF (intento sin token CSRF)...')
       try {
@@ -326,6 +234,7 @@
         logLine(`  Error: ${message}`)
       }
       logLine('')
+
       // 8. Logout
       logLine('8. Realizando logout...')
       const logoutResponse = await cliente.post<{
@@ -356,7 +265,7 @@
         const message = error instanceof Error ? error.message : String(error)
         logLine('✅ Correcto: Acceso denegado después de logout')
         logLine(`  Error: ${message}`)
-      } */
+      }
 
       logLine('\n=== Todas las pruebas completadas exitosamente ===')
       status.value = 'Prueba completada. Revisa la salida.'

@@ -6,6 +6,7 @@
 
 // Composables
 import { createRouter, createWebHistory } from 'vue-router'
+import Dashboard from '@/pages/dashboard.vue'
 import Index from '@/pages/index.vue'
 
 const router = createRouter({
@@ -14,6 +15,10 @@ const router = createRouter({
     {
       path: '/',
       component: Index,
+    },
+    {
+      path: '/dashboard',
+      component: Dashboard,
     },
   ],
 })
