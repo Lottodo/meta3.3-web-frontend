@@ -89,7 +89,9 @@
 
 <script setup lang="ts">
   import { computed, ref } from 'vue'
+  import { useRouter } from 'vue-router'
 
+  const router = useRouter()
   const form = ref()
 
   const email = ref('')
@@ -109,7 +111,49 @@
     const { valid } = await form.value.validate()
 
     // if (valid) alert('Form is valid')
-    if (valid) probarAPI(String(email.value))
+    if (!valid) return
+
+    try {
+      // 1. Login para obtener tokens
+      logLine('1. Realizando login...')
+      const loginResponse = await cliente.post<{
+        usuario?: unknown
+        csrfToken?: string
+      }>(
+        `${API_BASE_URL}/auth/login`,
+        { email: email.value },
+      )
+
+      logLine('✅ Login exitoso')
+      logLine(`Usuario: ${JSON.stringify(loginResponse.data.usuario)}`)
+      csrfToken.value = loginResponse.data.csrfToken ?? ''
+      if (getCookie('csrf_token')) {
+        logLine(`Token CSRF recibido: ${csrfToken.value.slice(0, 20)}...`)
+      } else {
+        logLine('Token CSRF no recibido en la respuesta')
+      }
+      logLine('Cookies configuradas automáticamente por el navegador\n')
+      logLine('Llendo al Dashboard')
+      for (let i = 0; i < 3; i++) {
+        await sleep(500)
+        logLine('.')
+        await sleep(500)
+      }
+      await router.push('/dashboard')
+
+      status.value = 'Prueba completada. Revisa la salida.'
+    } catch (error) {
+      hasError.value = true
+      const message = error instanceof Error ? error.message : String(error)
+      logLine(`❌ Error en las pruebas: ${message}`)
+      status.value = `Error: ${message}`
+    } finally {
+      isRunning.value = false
+    }
+  }
+
+  function sleep (ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms))
   }
 
   // Usar proxy de Vite: /api -> http://localhost:3003
@@ -226,6 +270,7 @@
       }
       logLine('Cookies configuradas automáticamente por el navegador\n')
 
+      /*
       // 2. Verificar autenticación
       logLine('2. Verificando autenticación...')
       const verifyResponse = await cliente.get<{
@@ -314,7 +359,6 @@
       logLine(`  Descripción: ${tareaEspecifica.data.tarea?.descripcion ?? '(sin descripción)'}`)
       logLine(`  Estado: ${tareaEspecifica.data.tarea?.completada ? 'Completada' : 'Pendiente'}\n`)
 
-      /*
       // 7. Intentar acceder sin token CSRF (debería fallar)
       logLine('7. Probando protección CSRF (intento sin token CSRF)...')
       try {
