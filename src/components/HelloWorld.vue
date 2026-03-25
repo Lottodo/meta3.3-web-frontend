@@ -2,88 +2,93 @@
   <v-container class="py-10">
     <h1 class="text-h3">Lista de Tareas</h1>
 
-    <v-form ref="form">
-      <v-text-field
-        v-model="email"
-        label="Correo electrónico"
-        required
-        :rules="emailRules"
-      />
-
-      <v-text-field
-        v-model="password"
-        label="Contraseña"
-        required
-        :rules="passwordRules"
-      />
-
-      <div class="d-flex flex-column">
-        <v-btn
-          block
-          class="mt-4"
-          color="success"
-          @click="validate"
-        >
-          Iniciar sesión
-        </v-btn>
-
-        <!--
-        <v-btn
-          block
-          class="mt-4"
-          color="error"
-          @click="reset"
-        >
-          Reset Form
-        </v-btn>
-
-        <v-btn
-          block
-          class="mt-4"
-          color="warning"
-          @click="resetValidation"
-        >
-          Reset Validation
-        </v-btn>
-        -->
-
-      </div>
-    </v-form>
-
-    <div class="mt-6 d-flex ga-3">
-      <v-btn
-        color="primary"
-        :disabled="isRunning"
-        :loading="isRunning"
-        @click="probarAPI()"
+    <div class="d-flex justify-center mt-6">
+      <v-card
+        class="w-100"
+        max-width="460"
+        variant="elevated"
       >
-        Probar API
-      </v-btn>
+        <v-card-title class="text-h5">Iniciar sesión</v-card-title>
 
-      <v-btn
-        :disabled="isRunning || logs.length === 0"
-        variant="tonal"
-        @click="limpiar"
-      >
-        Limpiar
-      </v-btn>
+        <v-card-text>
+          <v-form ref="form" @submit.prevent="validate">
+            <v-text-field
+              v-model="email"
+              autocomplete="email"
+              label="Correo electrónico"
+              required
+              :rules="emailRules"
+              type="email"
+            />
+
+            <v-text-field
+              v-model="password"
+              autocomplete="off"
+              label="Contraseña"
+              required
+              :rules="passwordRules"
+              type="password"
+            />
+
+            <v-btn
+              block
+              class="mt-4"
+              color="success"
+              type="submit"
+            >
+              Iniciar sesión
+            </v-btn>
+          </v-form>
+        </v-card-text>
+      </v-card>
     </div>
 
-    <v-alert
-      v-if="status"
-      class="mt-4"
-      :type="statusType"
-      variant="tonal"
-    >
-      {{ status }}
-    </v-alert>
+    <div class="mt-6">
+      <v-switch
+        v-model="showDebug"
+        hide-details
+        label="debug"
+      />
 
-    <v-card class="mt-6" variant="tonal">
-      <v-card-title>Salida</v-card-title>
-      <v-card-text>
-        <pre style="white-space: pre-wrap; margin: 0">{{ logs.join('\n') }}</pre>
-      </v-card-text>
-    </v-card>
+      <v-expand-transition>
+        <div v-show="showDebug">
+          <div class="mt-2 d-flex ga-3">
+            <v-btn
+              color="primary"
+              :disabled="isRunning"
+              :loading="isRunning"
+              @click="probarAPI()"
+            >
+              Probar API
+            </v-btn>
+
+            <v-btn
+              :disabled="isRunning || logs.length === 0"
+              variant="tonal"
+              @click="limpiar"
+            >
+              Limpiar
+            </v-btn>
+          </div>
+
+          <v-alert
+            v-if="status"
+            class="mt-4"
+            :type="statusType"
+            variant="tonal"
+          >
+            {{ status }}
+          </v-alert>
+
+          <v-card class="mt-6" variant="tonal">
+            <v-card-title>Salida</v-card-title>
+            <v-card-text>
+              <pre style="white-space: pre-wrap; margin: 0">{{ logs.join('\n') }}</pre>
+            </v-card-text>
+          </v-card>
+        </div>
+      </v-expand-transition>
+    </div>
   </v-container>
 </template>
 
@@ -135,9 +140,9 @@
       logLine('Cookies configuradas automáticamente por el navegador\n')
       logLine('Llendo al Dashboard')
       for (let i = 0; i < 3; i++) {
-        await sleep(500)
+        await sleep(50)
         logLine('.')
-        await sleep(500)
+        await sleep(50)
       }
       await router.push('/dashboard')
 
@@ -164,6 +169,7 @@
   const status = ref('')
   const hasError = ref(false)
   const logs = ref<string[]>([])
+  const showDebug = ref(false)
 
   type ClienteOptions = {
     headers?: Record<string, string>
@@ -270,7 +276,6 @@
       }
       logLine('Cookies configuradas automáticamente por el navegador\n')
 
-      /*
       // 2. Verificar autenticación
       logLine('2. Verificando autenticación...')
       const verifyResponse = await cliente.get<{
@@ -400,7 +405,7 @@
         const message = error instanceof Error ? error.message : String(error)
         logLine('✅ Correcto: Acceso denegado después de logout')
         logLine(`  Error: ${message}`)
-      } */
+      }
 
       logLine('\n=== Todas las pruebas completadas exitosamente ===')
       status.value = 'Prueba completada. Revisa la salida.'
