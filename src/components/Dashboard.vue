@@ -25,7 +25,7 @@
         <v-card-text>
           <div class="d-flex align-center ga-2">
             <v-text-field
-              v-model="search"
+              v-model="searchInput"
               autocomplete="off"
               class="flex-grow-1"
               label="Buscar tarea"
@@ -36,7 +36,7 @@
               color="primary"
               prepend-icon="mdi-magnify"
               variant="tonal"
-              @click="loadItems()"
+              @click="onBuscar"
             >
               Buscar
             </v-btn>
@@ -45,11 +45,15 @@
           <v-data-table-server
             v-model:items-per-page="itemsPerPage"
             :headers="headers"
+            hover
             item-value="id"
             :items="serverItems"
             :items-length="totalItems"
+            items-per-page-text="Tareas por página"
             :loading="loading"
-            :search="search"
+            loading-text="Cargando tareas..."
+            no-data-text="No hay tareas para mostrar"
+            @click:row="onRowClick"
             @update:options="loadItems"
           >
             <template #item.completada="{ value }">
@@ -59,6 +63,16 @@
               />
             </template>
           </v-data-table-server>
+
+          <div class="d-flex justify-end mt-2">
+            <v-btn
+              :disabled="mode === 'all'"
+              variant="tonal"
+              @click="onLimpiar"
+            >
+              Limpiar
+            </v-btn>
+          </div>
 
         </v-card-text>
       </v-card>
@@ -114,8 +128,12 @@
   const serverItems = ref<Tarea[]>([])
   const totalItems = ref(0)
   const loading = ref(false)
-  const search = ref('')
+  const searchInput = ref('')
   const itemsPerPage = ref(10)
+
+  const mode = ref<'all' | 'title'>('all')
+  const activeQuery = ref('')
+
   type ClienteOptions = {
     headers?: Record<string, string>
   }
@@ -165,7 +183,21 @@
   }
 
   async function loadItems () {
+    if (mode.value === 'title') {
+      await getTasksByTitle(activeQuery.value)
+      return
+    }
+
     await getAllTasks()
+  }
+
+  onMounted(async () => {
+    await loadItems()
+  })
+
+  function onRowClick (_event: MouseEvent, row: any) {
+    const id = row?.item?.raw?.id ?? row?.item?.id ?? row?.raw?.id ?? row?.id
+    console.log(id)
   }
 
   function getCookie (name: string): string {
@@ -202,9 +234,47 @@
     }
   }
 
-  onMounted(async () => {
+  async function getTasksByTitle (q: string) {
+    loading.value = true
+    try {
+      const response = await cliente.get<{
+        mensaje?: string
+        total?: number
+        tareas?: Tarea[]
+        tarea?: Tarea
+      }>(`${API_BASE_URL}/tareas/buscar?q=${encodeURIComponent(q)}`)
+
+      const tareas = response.data.tareas ?? (response.data.tarea ? [response.data.tarea] : [])
+      serverItems.value = tareas
+      totalItems.value = response.data.total ?? tareas.length
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.log(`❌ Error buscando tareas: ${message}`)
+      serverItems.value = []
+      totalItems.value = 0
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function onBuscar () {
+    const q = searchInput.value.trim()
+    if (!q) {
+      console.log('Query vacio')
+      return
+    }
+
+    mode.value = 'title'
+    activeQuery.value = q
     await loadItems()
-  })
+  }
+
+  async function onLimpiar () {
+    searchInput.value = ''
+    activeQuery.value = ''
+    mode.value = 'all'
+    await loadItems()
+  }
 
   async function logout () {
     console.log('Realizando logout...')
@@ -226,3 +296,10 @@
   }
 
 </script>
+
+<style scoped>
+  :deep(.v-data-table tbody tr:hover) {
+    cursor: pointer;
+    background-color: rgba(var(--v-theme-on-surface), 0.06);
+  }
+</style>
