@@ -25,6 +25,7 @@
         <v-card-text>
           <div class="d-flex align-center ga-2">
             <v-text-field
+              v-model="search"
               autocomplete="off"
               class="flex-grow-1"
               label="Buscar tarea"
@@ -35,10 +36,30 @@
               color="primary"
               prepend-icon="mdi-magnify"
               variant="tonal"
+              @click="loadItems()"
             >
               Buscar
             </v-btn>
           </div>
+
+          <v-data-table-server
+            v-model:items-per-page="itemsPerPage"
+            :headers="headers"
+            item-value="id"
+            :items="serverItems"
+            :items-length="totalItems"
+            :loading="loading"
+            :search="search"
+            @update:options="loadItems"
+          >
+            <template #item.completada="{ value }">
+              <v-icon
+                :color="value ? 'success' : 'error'"
+                :icon="value ? 'mdi-check' : 'mdi-close'"
+              />
+            </template>
+          </v-data-table-server>
+
         </v-card-text>
       </v-card>
 
@@ -72,28 +93,32 @@
 </template>
 
 <script setup lang="ts">
+  import { onMounted, ref } from 'vue'
   import { useRouter } from 'vue-router'
 
   const router = useRouter()
   const API_BASE_URL = '/api'
 
+  type Tarea = {
+    id: number
+    titulo: string
+    descripcion: string
+    completada: boolean
+  }
+
+  const headers = [
+    { title: 'Título', key: 'titulo' },
+    { title: 'Completada', key: 'completada' },
+  ]
+
+  const serverItems = ref<Tarea[]>([])
+  const totalItems = ref(0)
+  const loading = ref(false)
+  const search = ref('')
+  const itemsPerPage = ref(10)
   type ClienteOptions = {
     headers?: Record<string, string>
   }
-
-  function getCookie (name: string): string {
-    return document.cookie
-      .split('; ')
-      .find(row => row.startsWith(name + '='))
-      ?.split('=')[1] || ''
-  }
-
-  async function parseBody (response: Response) {
-    const contentType = response.headers.get('content-type') || ''
-    if (contentType.includes('application/json')) return response.json()
-    return response.text()
-  }
-
   const cliente = {
     async get<TResponse>(url: string, options: ClienteOptions = {}) {
       const csrfToken = getCookie('csrf_token')
@@ -138,6 +163,48 @@
       return { data: data as TResponse }
     },
   }
+
+  async function loadItems () {
+    await getAllTasks()
+  }
+
+  function getCookie (name: string): string {
+    return document.cookie
+      .split('; ')
+      .find(row => row.startsWith(name + '='))
+      ?.split('=')[1] || ''
+  }
+
+  async function parseBody (response: Response) {
+    const contentType = response.headers.get('content-type') || ''
+    if (contentType.includes('application/json')) return response.json()
+    return response.text()
+  }
+
+  async function getAllTasks () {
+    loading.value = true
+    try {
+      const tareasResponse = await cliente.get<{
+        mensaje?: string
+        total?: number
+        tareas?: Tarea[]
+      }>(`${API_BASE_URL}/tareas`)
+
+      serverItems.value = tareasResponse.data.tareas ?? []
+      totalItems.value = tareasResponse.data.total ?? serverItems.value.length
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.log(`❌ Error obteniendo tareas: ${message}`)
+      serverItems.value = []
+      totalItems.value = 0
+    } finally {
+      loading.value = false
+    }
+  }
+
+  onMounted(async () => {
+    await loadItems()
+  })
 
   async function logout () {
     console.log('Realizando logout...')
