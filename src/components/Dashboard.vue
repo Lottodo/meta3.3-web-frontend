@@ -27,7 +27,6 @@
 
   const router = useRouter()
   const API_BASE_URL = '/api'
-  const isRunning = ref(false)
   const logs = ref<string[]>([])
 
   type ClienteOptions = {

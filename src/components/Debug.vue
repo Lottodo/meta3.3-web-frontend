@@ -1,165 +1,54 @@
 <template>
-  <v-container class="py-10">
-    <h1 class="text-h3">Lista de Tareas</h1>
+  <div class="mt-6">
+    <v-switch
+      v-model="showDebug"
+      hide-details
+      label="debug"
+    />
 
-    <div class="d-flex justify-center mt-6">
-      <v-card
-        class="w-100"
-        max-width="460"
-        variant="elevated"
-      >
-        <v-card-title class="text-h5">Iniciar sesión</v-card-title>
-
-        <v-card-text>
-          <v-form ref="form" @submit.prevent="validate">
-            <v-text-field
-              v-model="email"
-              autocomplete="email"
-              label="Correo electrónico"
-              required
-              :rules="emailRules"
-              type="email"
-            />
-
-            <v-text-field
-              v-model="password"
-              autocomplete="off"
-              label="Contraseña"
-              required
-              :rules="passwordRules"
-              type="password"
-            />
-
-            <v-btn
-              block
-              class="mt-4"
-              color="success"
-              type="submit"
-            >
-              Iniciar sesión
-            </v-btn>
-          </v-form>
-        </v-card-text>
-      </v-card>
-    </div>
-
-    <div class="mt-6">
-      <v-switch
-        v-model="showDebug"
-        hide-details
-        label="debug"
-      />
-
-      <v-expand-transition>
-        <div v-show="showDebug">
-          <div class="mt-2 d-flex ga-3">
-            <v-btn
-              color="primary"
-              :disabled="isRunning"
-              :loading="isRunning"
-              @click="probarAPI()"
-            >
-              Probar API
-            </v-btn>
-
-            <v-btn
-              :disabled="isRunning || logs.length === 0"
-              variant="tonal"
-              @click="limpiar"
-            >
-              Limpiar
-            </v-btn>
-          </div>
-
-          <v-alert
-            v-if="status"
-            class="mt-4"
-            :type="statusType"
-            variant="tonal"
+    <v-expand-transition>
+      <div v-show="showDebug">
+        <div class="mt-2 d-flex ga-3">
+          <v-btn
+            color="primary"
+            :disabled="isRunning"
+            :loading="isRunning"
+            @click="probarAPI()"
           >
-            {{ status }}
-          </v-alert>
+            Probar API
+          </v-btn>
 
-          <v-card class="mt-6" variant="tonal">
-            <v-card-title>Salida</v-card-title>
-            <v-card-text>
-              <pre style="white-space: pre-wrap; margin: 0">{{ logs.join('\n') }}</pre>
-            </v-card-text>
-          </v-card>
+          <v-btn
+            :disabled="isRunning || logs.length === 0"
+            variant="tonal"
+            @click="limpiar"
+          >
+            Limpiar
+          </v-btn>
         </div>
-      </v-expand-transition>
-    </div>
-  </v-container>
+
+        <v-alert
+          v-if="status"
+          class="mt-4"
+          :type="statusType"
+          variant="tonal"
+        >
+          {{ status }}
+        </v-alert>
+
+        <v-card class="mt-6" variant="tonal">
+          <v-card-title>Salida</v-card-title>
+          <v-card-text>
+            <pre style="white-space: pre-wrap; margin: 0">{{ logs.join('\n') }}</pre>
+          </v-card-text>
+        </v-card>
+      </div>
+    </v-expand-transition>
+  </div>
 </template>
 
 <script setup lang="ts">
   import { computed, ref } from 'vue'
-  import { useRouter } from 'vue-router'
-
-  const router = useRouter()
-  const form = ref()
-
-  const email = ref('')
-  const emailRules = ref([
-    (v: any) => !!v || 'Introduzca su correo electrónico',
-    (v: any) => (v && v.length <= 254) || 'El correo es demasiado largo',
-    (v: any) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) || 'Correo electrónico inválido',
-  ])
-  const password = ref('')
-  const passwordRules = ref([
-    (v: any) => !!v || 'Introduzca su contraseña',
-    (v: any) => (v && v.length >= 8) || 'La contraseña debe tener al menos 8 caracteres',
-    (v: any) => (v && v.length <= 128) || 'Contraseña demasiado larga',
-  ])
-
-  async function validate () {
-    const { valid } = await form.value.validate()
-
-    // if (valid) alert('Form is valid')
-    if (!valid) return
-
-    try {
-      // 1. Login para obtener tokens
-      logLine('1. Realizando login...')
-      const loginResponse = await cliente.post<{
-        usuario?: unknown
-        csrfToken?: string
-      }>(
-        `${API_BASE_URL}/auth/login`,
-        { email: email.value },
-      )
-
-      logLine('✅ Login exitoso')
-      logLine(`Usuario: ${JSON.stringify(loginResponse.data.usuario)}`)
-      csrfToken.value = loginResponse.data.csrfToken ?? ''
-      if (getCookie('csrf_token')) {
-        logLine(`Token CSRF recibido: ${csrfToken.value.slice(0, 20)}...`)
-      } else {
-        logLine('Token CSRF no recibido en la respuesta')
-      }
-      logLine('Cookies configuradas automáticamente por el navegador\n')
-      logLine('Llendo al Dashboard')
-      for (let i = 0; i < 3; i++) {
-        await sleep(50)
-        logLine('.')
-        await sleep(50)
-      }
-      await router.push('/dashboard')
-
-      status.value = 'Prueba completada. Revisa la salida.'
-    } catch (error) {
-      hasError.value = true
-      const message = error instanceof Error ? error.message : String(error)
-      logLine(`❌ Error en las pruebas: ${message}`)
-      status.value = `Error: ${message}`
-    } finally {
-      isRunning.value = false
-    }
-  }
-
-  function sleep (ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms))
-  }
 
   // Usar proxy de Vite: /api -> http://localhost:3003
   const API_BASE_URL = '/api'
@@ -367,12 +256,28 @@
       // 7. Intentar acceder sin token CSRF (debería fallar)
       logLine('7. Probando protección CSRF (intento sin token CSRF)...')
       try {
-        await cliente.get(`${API_BASE_URL}/tareas`)
-        logLine('❌ ERROR: Debería haber fallado sin token CSRF')
+        // Nota: cliente.get() siempre inyecta el header x-csrf-token.
+        // Para probar "sin enviar token CSRF", hacemos fetch directo sin headers.
+        const response = await fetch(`${API_BASE_URL}/tareas`, {
+          method: 'GET',
+          credentials: 'include',
+        })
+
+        const data = await parseBody(response)
+
+        if (response.ok) {
+          const message = typeof data === 'string' ? data : JSON.stringify(data)
+          throw new Error(`❌ ERROR: Debería haber fallado sin token CSRF (respuesta: ${message})`)
+        }
+
+        logLine('✅ Correcto: Solicitud rechazada sin token CSRF')
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
-        logLine('✅ Correcto: Solicitud rechazada sin token CSRF')
-        logLine(`  Error: ${message}`)
+        if (String(message).includes('Debería haber fallado')) {
+          logLine(message)
+        } else {
+          logLine(`  Error: ${message}`)
+        }
       }
       logLine('')
       // 8. Logout
