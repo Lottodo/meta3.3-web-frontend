@@ -78,26 +78,27 @@
       </v-card>
 
       <v-card class="flex-1-1-0" min-width="320" variant="elevated">
-        <v-card-title class="text-h5">Detalle de la tarea</v-card-title>
+        <v-card-title class="text-h5">Detalles de la tarea</v-card-title>
         <v-card-text>
           <v-text-field
             autocomplete="off"
             label="Título"
+            :model-value="selectedTask?.titulo ?? ''"
             placeholder="Selecciona una tarea para ver sus detalles"
-            readonly
           />
           <v-textarea
             auto-grow
             autocomplete="off"
             label="Descripción"
+            :model-value="selectedTask?.descripcion ?? ''"
             placeholder="(sin selección)"
-            readonly
           />
-          <v-text-field
-            autocomplete="off"
-            label="Estado"
-            placeholder="(pendiente / completada)"
-            readonly
+          <v-switch
+            color="primary"
+            hide-details
+            inset
+            label="Completada"
+            :model-value="selectedTask?.completada ?? false"
           />
         </v-card-text>
       </v-card>
@@ -128,8 +129,11 @@
   const serverItems = ref<Tarea[]>([])
   const totalItems = ref(0)
   const loading = ref(false)
+  const detailsLoading = ref(false)
   const searchInput = ref('')
   const itemsPerPage = ref(10)
+
+  const selectedTask = ref<Tarea | null>(null)
 
   const mode = ref<'all' | 'title'>('all')
   const activeQuery = ref('')
@@ -195,9 +199,11 @@
     await loadItems()
   })
 
-  function onRowClick (_event: MouseEvent, row: any) {
+  async function onRowClick (_event: MouseEvent, row: any) {
     const id = row?.item?.raw?.id ?? row?.item?.id ?? row?.raw?.id ?? row?.id
-    console.log(id)
+    if (typeof id !== 'number') return
+
+    await getTaskById(id)
   }
 
   function getCookie (name: string): string {
@@ -254,6 +260,35 @@
       totalItems.value = 0
     } finally {
       loading.value = false
+    }
+  }
+
+  async function getTaskById (id: number) {
+    detailsLoading.value = true
+    try {
+      const tareaEspecifica = await cliente.get<{
+        tarea?: Partial<Tarea>
+      }>(`${API_BASE_URL}/tareas/${id}`, {
+        headers: {
+          'x-csrf-token': getCookie('csrf_token'),
+        },
+      })
+
+      const tarea = tareaEspecifica.data.tarea
+      selectedTask.value = tarea
+        ? {
+          id,
+          titulo: tarea.titulo ?? '',
+          descripcion: tarea.descripcion ?? '',
+          completada: Boolean(tarea.completada),
+        }
+        : null
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.log(`❌ Error obteniendo tarea (id=${id}): ${message}`)
+      selectedTask.value = null
+    } finally {
+      detailsLoading.value = false
     }
   }
 
