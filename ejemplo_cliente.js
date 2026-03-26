@@ -135,8 +135,121 @@ async function probarAPI () {
     console.log('  Estado:', tareaEspecifica.data.tarea.completada ? 'Completada' : 'Pendiente')
     console.log('')
 
-    // 7. Intentar acceder sin token CSRF (debería fallar)
-    console.log('7. Probando protección CSRF (intento sin token CSRF)...')
+    // 7. Sobreescribir una tarea (PUT)
+    console.log('7. Sobreescribiendo tarea (PUT) (ID: 1)...')
+    const payloadPut = {
+      titulo: 'Comprar víveres (actualizada)',
+      descripcion: 'Leche, huevos, pan, frutas y café',
+      completada: true,
+    }
+
+    const putResponse = await cliente.put(
+      `${API_BASE_URL}/tareas/1`,
+      payloadPut,
+      {
+        headers: {
+          'x-csrf-token': csrfToken,
+          'Content-Type': 'application/json',
+        },
+      },
+    )
+
+    console.log('✅ PUT ejecutado')
+    console.log('Tarea devuelta por PUT:', putResponse.data.tarea)
+    console.log('')
+
+    // 8. Verificar la tarea después del PUT
+    console.log('8. Verificando tarea después del PUT (GET ID: 1)...')
+    const tareaTrasPut = await cliente.get(
+      `${API_BASE_URL}/tareas/1`,
+      {
+        headers: {
+          'x-csrf-token': csrfToken,
+        },
+      },
+    )
+
+    console.log('✅ Verificación post-PUT exitosa')
+    console.log('Detalles:')
+    console.log('  Título:', tareaTrasPut.data.tarea.titulo)
+    console.log('  Descripción:', tareaTrasPut.data.tarea.descripcion)
+    console.log('  Estado:', tareaTrasPut.data.tarea.completada ? 'Completada' : 'Pendiente')
+    console.log('')
+
+    // 9. Actualizar una tarea parcialmente (PATCH)
+    console.log('9. Actualizando tarea parcialmente (PATCH) (ID: 2)...')
+    const payloadPatch = {
+      completada: false,
+    }
+
+    const patchResponse = await cliente.patch(
+      `${API_BASE_URL}/tareas/2`,
+      payloadPatch,
+      {
+        headers: {
+          'x-csrf-token': csrfToken,
+          'Content-Type': 'application/json',
+        },
+      },
+    )
+
+    console.log('✅ PATCH ejecutado')
+    console.log('Tarea devuelta por PATCH:', patchResponse.data.tarea)
+    console.log('')
+
+    // 10. Verificar la tarea después del PATCH
+    console.log('10. Verificando tarea después del PATCH (GET ID: 2)...')
+    const tareaTrasPatch = await cliente.get(
+      `${API_BASE_URL}/tareas/2`,
+      {
+        headers: {
+          'x-csrf-token': csrfToken,
+        },
+      },
+    )
+
+    console.log('✅ Verificación post-PATCH exitosa')
+    console.log('Detalles:')
+    console.log('  Título:', tareaTrasPatch.data.tarea.titulo)
+    console.log('  Descripción:', tareaTrasPatch.data.tarea.descripcion)
+    console.log('  Estado:', tareaTrasPatch.data.tarea.completada ? 'Completada' : 'Pendiente')
+    console.log('')
+
+    // 11. Eliminar una tarea (DELETE)
+    console.log('11. Eliminando tarea (DELETE) (ID: 2)...')
+    const deleteResponse = await cliente.delete(
+      `${API_BASE_URL}/tareas/2`,
+      {
+        headers: {
+          'x-csrf-token': csrfToken,
+        },
+      },
+    )
+
+    console.log('✅ DELETE ejecutado')
+    console.log('Tarea eliminada:', deleteResponse.data.tarea)
+    console.log('')
+
+    // 12. Verificar que la tarea fue eliminada
+    console.log('12. Verificando que la tarea fue eliminada (GET ID: 2)...')
+    try {
+      await cliente.get(
+        `${API_BASE_URL}/tareas/2`,
+        {
+          headers: {
+            'x-csrf-token': csrfToken,
+          },
+        },
+      )
+      console.log('❌ ERROR: Debería haber fallado al obtener la tarea eliminada')
+    } catch (error) {
+      console.log('✅ Correcto: La tarea eliminada ya no existe')
+      console.log('  Error:', error.response?.data?.error || error.message)
+    }
+    console.log('')
+
+    // 13. Intentar acceder sin token CSRF (debería fallar)
+    console.log('13. Probando protección CSRF (intento sin token CSRF)...')
     try {
       await cliente.get(`${API_BASE_URL}/tareas`)
       console.log('❌ ERROR: Debería haber fallado sin token CSRF')
@@ -146,8 +259,8 @@ async function probarAPI () {
     }
     console.log('')
 
-    // 8. Logout
-    console.log('8. Realizando logout...')
+    // 14. Logout
+    console.log('14. Realizando logout...')
     const logoutResponse = await cliente.post(
       `${API_BASE_URL}/auth/logout`,
       {},
@@ -162,8 +275,8 @@ async function probarAPI () {
     console.log('✅ Logout exitoso:', logoutResponse.data.mensaje)
     console.log('')
 
-    // 9. Intentar acceder después de logout (debería fallar)
-    console.log('9. Intentando acceder después de logout...')
+    // 15. Intentar acceder después de logout (debería fallar)
+    console.log('15. Intentando acceder después de logout...')
     try {
       await cliente.get(
         `${API_BASE_URL}/tareas`,

@@ -93,13 +93,31 @@
             :model-value="selectedTask?.descripcion ?? ''"
             placeholder="(sin selección)"
           />
-          <v-switch
-            color="primary"
-            hide-details
-            inset
-            label="Completada"
-            :model-value="selectedTask?.completada ?? false"
-          />
+          <div class="d-flex align-center justify-space-between">
+            <v-switch
+              color="success"
+              hide-details
+              inset
+              label="Completada"
+              :model-value="selectedTask?.completada ?? false"
+              @update:model-value="onCompletadaChange"
+            />
+
+            <div class="d-flex ga-2">
+              <v-btn
+                color="secondary"
+                @click="onLimpiar"
+              >
+                Editar
+              </v-btn>
+              <v-btn
+                color="error"
+                @click="onLimpiar"
+              >
+                Eliminar
+              </v-btn>
+            </div>
+          </div>
         </v-card-text>
       </v-card>
     </div>
@@ -173,6 +191,76 @@
         },
         credentials: 'include',
         body: JSON.stringify(body),
+      })
+
+      const data = await parseBody(response)
+
+      if (!response.ok) {
+        const message = typeof data === 'string' ? data : JSON.stringify(data)
+        throw new Error(`HTTP ${response.status}: ${message}`)
+      }
+
+      return { data: data as TResponse }
+    },
+
+    async put<TResponse>(url: string, body: unknown, options: ClienteOptions = {}) {
+      const csrfToken = getCookie('csrf_token')
+
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken,
+          ...options.headers,
+        },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      })
+
+      const data = await parseBody(response)
+
+      if (!response.ok) {
+        const message = typeof data === 'string' ? data : JSON.stringify(data)
+        throw new Error(`HTTP ${response.status}: ${message}`)
+      }
+
+      return { data: data as TResponse }
+    },
+
+    async patch<TResponse>(url: string, body: unknown, options: ClienteOptions = {}) {
+      const csrfToken = getCookie('csrf_token')
+
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken,
+          ...options.headers,
+        },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      })
+
+      const data = await parseBody(response)
+
+      if (!response.ok) {
+        const message = typeof data === 'string' ? data : JSON.stringify(data)
+        throw new Error(`HTTP ${response.status}: ${message}`)
+      }
+
+      return { data: data as TResponse }
+    },
+
+    async delete<TResponse>(url: string, options: ClienteOptions = {}) {
+      const csrfToken = getCookie('csrf_token')
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'x-csrf-token': csrfToken,
+          ...options.headers,
+        },
+        credentials: 'include',
       })
 
       const data = await parseBody(response)
@@ -309,6 +397,34 @@
     activeQuery.value = ''
     mode.value = 'all'
     await loadItems()
+  }
+
+  async function onCompletadaChange (value: unknown) {
+    const task = selectedTask.value
+    if (!task) return
+
+    const completada = Boolean(value)
+    detailsLoading.value = true
+    try {
+      const patchResponse = await cliente.patch<{
+        tarea?: Partial<Tarea>
+      }>(`${API_BASE_URL}/tareas/${task.id}`, { completada })
+
+      const tarea = patchResponse.data.tarea
+      selectedTask.value = {
+        id: task.id,
+        titulo: tarea?.titulo ?? task.titulo,
+        descripcion: tarea?.descripcion ?? task.descripcion,
+        completada: tarea?.completada ?? completada,
+      }
+
+      await loadItems()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.log(`❌ Error actualizando tarea (id=${task.id}): ${message}`)
+    } finally {
+      detailsLoading.value = false
+    }
   }
 
   async function logout () {
