@@ -81,38 +81,43 @@
         <v-card-title class="text-h5">Detalles de la tarea</v-card-title>
         <v-card-text>
           <v-text-field
+            v-model="editTitulo"
             autocomplete="off"
+            :disabled="!selectedTask"
             label="Título"
-            :model-value="selectedTask?.titulo ?? ''"
             placeholder="Selecciona una tarea para ver sus detalles"
           />
           <v-textarea
+            v-model="editDescripcion"
             auto-grow
             autocomplete="off"
+            :disabled="!selectedTask"
             label="Descripción"
-            :model-value="selectedTask?.descripcion ?? ''"
             placeholder="(sin selección)"
           />
           <div class="d-flex align-center justify-space-between">
             <v-switch
+              v-model="editCompletada"
               color="success"
+              :disabled="!selectedTask"
               hide-details
               inset
               label="Completada"
-              :model-value="selectedTask?.completada ?? false"
               @update:model-value="onCompletadaChange"
             />
 
             <div class="d-flex ga-2">
               <v-btn
                 color="secondary"
-                @click="onLimpiar"
+                :disabled="!selectedTask"
+                @click="onEditar"
               >
                 Editar
               </v-btn>
               <v-btn
                 color="error"
-                @click="onLimpiar"
+                :disabled="!selectedTask"
+                @click="onEliminar"
               >
                 Eliminar
               </v-btn>
@@ -152,6 +157,10 @@
   const itemsPerPage = ref(10)
 
   const selectedTask = ref<Tarea | null>(null)
+
+  const editTitulo = ref('')
+  const editDescripcion = ref('')
+  const editCompletada = ref(false)
 
   const mode = ref<'all' | 'title'>('all')
   const activeQuery = ref('')
@@ -363,7 +372,7 @@
       })
 
       const tarea = tareaEspecifica.data.tarea
-      selectedTask.value = tarea
+      const nextSelectedTask = tarea
         ? {
           id,
           titulo: tarea.titulo ?? '',
@@ -371,10 +380,20 @@
           completada: Boolean(tarea.completada),
         }
         : null
+
+      selectedTask.value = nextSelectedTask
+
+      editTitulo.value = nextSelectedTask?.titulo ?? ''
+      editDescripcion.value = nextSelectedTask?.descripcion ?? ''
+      editCompletada.value = nextSelectedTask?.completada ?? false
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.log(`❌ Error obteniendo tarea (id=${id}): ${message}`)
       selectedTask.value = null
+
+      editTitulo.value = ''
+      editDescripcion.value = ''
+      editCompletada.value = false
     } finally {
       detailsLoading.value = false
     }
@@ -418,10 +437,73 @@
         completada: tarea?.completada ?? completada,
       }
 
+      editCompletada.value = selectedTask.value.completada
+
       await loadItems()
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.log(`❌ Error actualizando tarea (id=${task.id}): ${message}`)
+    } finally {
+      detailsLoading.value = false
+    }
+  }
+
+  async function onEditar () {
+    const task = selectedTask.value
+    if (!task) return
+
+    detailsLoading.value = true
+    try {
+      const payloadPut = {
+        titulo: editTitulo.value,
+        descripcion: editDescripcion.value,
+        completada: editCompletada.value,
+      }
+
+      const putResponse = await cliente.put<{
+        tarea?: Partial<Tarea>
+      }>(`${API_BASE_URL}/tareas/${task.id}`, payloadPut)
+
+      const tarea = putResponse.data.tarea
+      selectedTask.value = {
+        id: task.id,
+        titulo: tarea?.titulo ?? payloadPut.titulo,
+        descripcion: tarea?.descripcion ?? payloadPut.descripcion,
+        completada: tarea?.completada ?? payloadPut.completada,
+      }
+
+      editTitulo.value = selectedTask.value.titulo
+      editDescripcion.value = selectedTask.value.descripcion
+      editCompletada.value = selectedTask.value.completada
+
+      await loadItems()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.log(`❌ Error editando tarea (id=${task.id}): ${message}`)
+    } finally {
+      detailsLoading.value = false
+    }
+  }
+
+  async function onEliminar () {
+    const task = selectedTask.value
+    if (!task) return
+
+    detailsLoading.value = true
+    try {
+      await cliente.delete<{
+        tarea?: Partial<Tarea>
+      }>(`${API_BASE_URL}/tareas/${task.id}`)
+
+      selectedTask.value = null
+      editTitulo.value = ''
+      editDescripcion.value = ''
+      editCompletada.value = false
+
+      await loadItems()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.log(`❌ Error eliminando tarea (id=${task.id}): ${message}`)
     } finally {
       detailsLoading.value = false
     }
