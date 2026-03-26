@@ -1,78 +1,94 @@
-# meta3.3-web-frontend
+# Meta 3.3 - Lista de Tareas Frontend
 
-Scaffolded with Vuetify CLI.
+Meta 3.3 del curso de **Desarrollo de Aplicaciones Web** de la **UABC, FIM**. 
 
-## ❗️ Documentation
+Matrícula de alumno: 1169598
 
-- Primary docs: https://vuetifyjs.com/
-- Getting started guide: https://vuetifyjs.com/en/getting-started/installation/
-- Community support: https://community.vuetifyjs.com/
-- Issue tracker: https://issues.vuetifyjs.com/
+Este repositorio contiene el **frontend** (Vue 3 + Vuetify) de una aplicación de **Lista de Tareas** con:
 
-## 🧱 Stack
+- Pantalla de **inicio de sesión**.
+- **Dashboard** para listar, buscar y ver detalles de tareas.
+- Un panel **Debug** para probar el flujo de autenticación y el consumo de la API.
 
-- Framework: Vue 3 + Vite
-- UI Library: Vuetify
-- Language: TypeScript
-- Package manager: npm
+El frontend consume una API bajo el prefijo **`/api`** y, en desarrollo, Vite hace proxy hacia `http://localhost:3003`.
 
-## 🧭 Start Here
+## Tecnologías
 
-- Main entry: `src/main.ts`
-- Main app component: `src/App.vue`
-- Main styles: `src/styles/`
-- Plugin setup: `src/plugins/`
-
-## 📁 Project Structure
-
-- `src/main.ts` — application entry point
-- `src/App.vue` — root component
-- `src/components/` — reusable Vue components
-- `src/plugins/` — plugin registration and setup
-- `src/styles/` — global styles and theme settings
-- `public/` — static public files
-
-## ✨ Enabled Features
-
-- ESLint
+- Vue 3
+- Vite
+- Vuetify
 - Vue Router
+- ESLint
+- Fetch API (con `credentials: 'include'` para enviar cookies)
 
-## 💿 Install
+## Requisitos
 
-Use your selected package manager (npm) to install dependencies:
+- Node.js (recomendado **v22**, por `@tsconfig/node22`)
+- npm
+
+## Cómo correrlo
+
+### 1) Instalar dependencias
 
 ```bash
 npm install
 ```
 
-## 🚀 Quick Start
+### 2) Levantar el frontend (desarrollo)
 
 ```bash
-npm install
 npm run dev
 ```
 
-## 🏗️ Build
+Abre: `http://localhost:3000`
+
+### 3) Build / preview
 
 ```bash
 npm run build
+npm run preview
 ```
 
-## 🧪 Available Scripts
+## API / Endpoints que utiliza
 
-- `npm run dev`
-- `npm run build`
-- `npm run preview`
-- `npm run build-only`
-- `npm run type-check`
-- `npm run lint`
-- `npm run lint:fix`
+En desarrollo, el frontend llama a rutas relativas ` /api/... ` y Vite las proxya a `http://localhost:3003`.
+Esto está configurado en `vite.config.mts`:
 
-## 💪 Support Vuetify Development
+- Proxy: `/api` → `http://localhost:3003`
 
-This project uses Vuetify - an MIT licensed Open Source project. We are glad to welcome contributors and any support for ongoing development:
+> Nota: las peticiones incluyen `credentials: 'include'` y el frontend envía el header `x-csrf-token` usando el valor de la cookie `csrf_token`.
 
-- Contribute to Vuetify and ecosystem projects: https://github.com/vuetifyjs
-- Request enterprise support: https://support.vuetifyjs.com/
-- Sponsor on GitHub: https://github.com/sponsors/vuetifyjs
-- Support on Open Collective: https://opencollective.com/vuetify
+### Endpoints usados por el frontend
+
+| Método | Endpoint | Usado en | Descripción |
+|---|---|---|---|
+| POST | `/api/auth/login` | `src/components/LogIn.vue`, `src/components/Debug.vue` | Inicia sesión. Actualmente el body incluye `{ email }` (el campo de contraseña está en UI pero no se envía). |
+| GET | `/api/auth/verify` | `src/components/Debug.vue` | Verifica sesión/autenticación. |
+| POST | `/api/auth/logout` | `src/components/Dashboard.vue`, `src/components/Debug.vue` | Cierra sesión. |
+| GET | `/api/tareas` | `src/components/Dashboard.vue`, `src/components/Debug.vue` | Lista tareas. |
+| POST | `/api/tareas` | `src/components/Debug.vue` | Crea una tarea (ejemplo desde el panel debug). |
+| GET | `/api/tareas/:id` | `src/components/Dashboard.vue`, `src/components/Debug.vue` | Obtiene una tarea por id. |
+| GET | `/api/tareas/buscar?q=...` | `src/components/Dashboard.vue` | Busca tareas por título (query `q`). |
+
+## Estructura del sitio web
+
+### Rutas
+
+Definidas en `src/router/index.ts`:
+
+- `/` → `src/pages/index.vue`
+- `/dashboard` → `src/pages/dashboard.vue`
+
+### Páginas y componentes
+
+- `src/pages/index.vue`
+	- Renderiza `LogIn` + `Debug`.
+- `src/pages/dashboard.vue`
+	- Renderiza `Dashboard`.
+- `src/components/LogIn.vue`
+	- Formulario de inicio de sesión y navegación a `/dashboard`.
+- `src/components/Dashboard.vue`
+	- Tabla (server-side) con tareas, búsqueda por título, y panel de detalles.
+	- Botón de cierre de sesión.
+- `src/components/Debug.vue`
+	- Switch para mostrar un runner de pruebas de API (login → verify → crear tareas → listar → obtener por id → logout).
