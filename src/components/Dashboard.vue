@@ -81,14 +81,14 @@
         <v-card-title class="text-h5">Detalles de la tarea</v-card-title>
         <v-card-text>
           <v-text-field
-            v-model="editTitulo"
+            v-model="editTitle"
             autocomplete="off"
             :disabled="!selectedTask"
             label="Título"
             placeholder="Selecciona una tarea para ver sus detalles"
           />
           <v-textarea
-            v-model="editDescripcion"
+            v-model="editDescription"
             auto-grow
             autocomplete="off"
             :disabled="!selectedTask"
@@ -97,7 +97,7 @@
           />
           <div class="d-flex align-center justify-space-between">
             <v-switch
-              v-model="editCompletada"
+              v-model="editCompletion"
               color="success"
               :disabled="!selectedTask"
               hide-details
@@ -131,6 +131,7 @@
 </template>
 
 <script setup lang="ts">
+  // import type { title } from 'process'
   import { onMounted, ref } from 'vue'
   import { useRouter } from 'vue-router'
 
@@ -139,14 +140,14 @@
 
   type Tarea = {
     id: number
-    titulo: string
-    descripcion: string
-    completada: boolean
+    title: string
+    description: string
+    completion: boolean
   }
 
   const headers = [
-    { title: 'Título', key: 'titulo' },
-    { title: 'Completada', key: 'completada' },
+    { title: 'Título', key: 'title' },
+    { title: 'Completada', key: 'completion' },
   ]
 
   const serverItems = ref<Tarea[]>([])
@@ -158,9 +159,9 @@
 
   const selectedTask = ref<Tarea | null>(null)
 
-  const editTitulo = ref('')
-  const editDescripcion = ref('')
-  const editCompletada = ref(false)
+  const editTitle = ref('')
+  const editDescription = ref('')
+  const editCompletion = ref(false)
 
   const mode = ref<'all' | 'title'>('all')
   const activeQuery = ref('')
@@ -298,7 +299,10 @@
 
   async function onRowClick (_event: MouseEvent, row: any) {
     const id = row?.item?.raw?.id ?? row?.item?.id ?? row?.raw?.id ?? row?.id
-    if (typeof id !== 'number') return
+    if (typeof id !== 'number') {
+      console.log('Error consiguiendo ID')
+      return
+    }
 
     await getTaskById(id)
   }
@@ -327,6 +331,7 @@
 
       serverItems.value = tareasResponse.data.tareas ?? []
       totalItems.value = tareasResponse.data.total ?? serverItems.value.length
+      console.log(serverItems.value)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.log(`❌ Error obteniendo tareas: ${message}`)
@@ -361,6 +366,7 @@
   }
 
   async function getTaskById (id: number) {
+    console.log('getTaskById:', id)
     detailsLoading.value = true
     try {
       const tareaEspecifica = await cliente.get<{
@@ -375,25 +381,25 @@
       const nextSelectedTask = tarea
         ? {
           id,
-          titulo: tarea.titulo ?? '',
-          descripcion: tarea.descripcion ?? '',
-          completada: Boolean(tarea.completada),
+          title: tarea.title ?? '',
+          description: tarea.description ?? '',
+          completion: Boolean(tarea.completion),
         }
         : null
 
       selectedTask.value = nextSelectedTask
 
-      editTitulo.value = nextSelectedTask?.titulo ?? ''
-      editDescripcion.value = nextSelectedTask?.descripcion ?? ''
-      editCompletada.value = nextSelectedTask?.completada ?? false
+      editTitle.value = nextSelectedTask?.title ?? ''
+      editDescription.value = nextSelectedTask?.description ?? ''
+      editCompletion.value = nextSelectedTask?.completion ?? false
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.log(`❌ Error obteniendo tarea (id=${id}): ${message}`)
       selectedTask.value = null
 
-      editTitulo.value = ''
-      editDescripcion.value = ''
-      editCompletada.value = false
+      editTitle.value = ''
+      editDescription.value = ''
+      editCompletion.value = false
     } finally {
       detailsLoading.value = false
     }
@@ -432,12 +438,12 @@
       const tarea = patchResponse.data.tarea
       selectedTask.value = {
         id: task.id,
-        titulo: tarea?.titulo ?? task.titulo,
-        descripcion: tarea?.descripcion ?? task.descripcion,
-        completada: tarea?.completada ?? completada,
+        title: tarea?.title ?? task.title,
+        description: tarea?.description ?? task.description,
+        completion: tarea?.completion ?? completada,
       }
 
-      editCompletada.value = selectedTask.value.completada
+      editCompletion.value = selectedTask.value.completion
 
       await loadItems()
     } catch (error) {
@@ -455,9 +461,9 @@
     detailsLoading.value = true
     try {
       const payloadPut = {
-        titulo: editTitulo.value,
-        descripcion: editDescripcion.value,
-        completada: editCompletada.value,
+        title: editTitle.value,
+        description: editDescription.value,
+        completion: editCompletion.value,
       }
 
       const putResponse = await cliente.put<{
@@ -467,14 +473,14 @@
       const tarea = putResponse.data.tarea
       selectedTask.value = {
         id: task.id,
-        titulo: tarea?.titulo ?? payloadPut.titulo,
-        descripcion: tarea?.descripcion ?? payloadPut.descripcion,
-        completada: tarea?.completada ?? payloadPut.completada,
+        title: tarea?.title ?? payloadPut.title,
+        description: tarea?.description ?? payloadPut.description,
+        completion: tarea?.completion ?? payloadPut.completion,
       }
 
-      editTitulo.value = selectedTask.value.titulo
-      editDescripcion.value = selectedTask.value.descripcion
-      editCompletada.value = selectedTask.value.completada
+      editTitle.value = selectedTask.value.title
+      editDescription.value = selectedTask.value.description
+      editCompletion.value = selectedTask.value.completion
 
       await loadItems()
     } catch (error) {
@@ -496,9 +502,9 @@
       }>(`${API_BASE_URL}/tareas/${task.id}`)
 
       selectedTask.value = null
-      editTitulo.value = ''
-      editDescripcion.value = ''
-      editCompletada.value = false
+      editTitle.value = ''
+      editDescription.value = ''
+      editCompletion.value = false
 
       await loadItems()
     } catch (error) {
