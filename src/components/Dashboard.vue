@@ -20,62 +20,10 @@
     </div>
 
     <div class="d-flex mt-6 ga-4 flex-wrap">
-      <v-card class="flex-1-1-0" min-width="320" variant="elevated">
-        <v-card-title class="text-h5">Tareas</v-card-title>
-        <v-card-text>
-          <div class="d-flex align-center ga-2">
-            <v-text-field
-              v-model="searchInput"
-              autocomplete="off"
-              class="flex-grow-1"
-              label="Buscar tarea"
-              placeholder="Escribe para buscar una tarea..."
-              variant="underlined"
-            />
-            <v-btn
-              color="primary"
-              prepend-icon="mdi-magnify"
-              variant="tonal"
-              @click="onBuscar"
-            >
-              Buscar
-            </v-btn>
-          </div>
-
-          <v-data-table-server
-            v-model:items-per-page="itemsPerPage"
-            :headers="headers"
-            hover
-            item-value="id"
-            :items="serverItems"
-            :items-length="totalItems"
-            items-per-page-text="Tareas por página"
-            :loading="loading"
-            loading-text="Cargando tareas..."
-            no-data-text="No hay tareas para mostrar"
-            @click:row="onRowClick"
-            @update:options="loadItems"
-          >
-            <template #item.completada="{ value }">
-              <v-icon
-                :color="value ? 'success' : 'error'"
-                :icon="value ? 'mdi-check' : 'mdi-close'"
-              />
-            </template>
-          </v-data-table-server>
-
-          <div class="d-flex justify-end mt-2">
-            <v-btn
-              :disabled="mode === 'all'"
-              variant="tonal"
-              @click="onLimpiar"
-            >
-              Limpiar
-            </v-btn>
-          </div>
-
-        </v-card-text>
-      </v-card>
+      <TasksTableCard
+        ref="tasksCardRef"
+        @select="getTaskById"
+      />
 
       <v-card class="flex-1-1-0" min-width="320" variant="elevated">
         <v-card-title class="text-h5">Detalles de la tarea</v-card-title>
@@ -132,8 +80,9 @@
 
 <script setup lang="ts">
   // import type { title } from 'process'
-  import { onMounted, ref } from 'vue'
+  import { ref } from 'vue'
   import { useRouter } from 'vue-router'
+  import TasksTableCard from './TasksTableCard.vue'
 
   const router = useRouter()
   const API_BASE_URL = '/api'
@@ -145,26 +94,14 @@
     completion: boolean
   }
 
-  const headers = [
-    { title: 'Título', key: 'title' },
-    { title: 'Completada', key: 'completion' },
-  ]
-
-  const serverItems = ref<Tarea[]>([])
-  const totalItems = ref(0)
-  const loading = ref(false)
+  const tasksCardRef = ref<{ reload: () => Promise<void> } | null>(null)
   const detailsLoading = ref(false)
-  const searchInput = ref('')
-  const itemsPerPage = ref(10)
 
   const selectedTask = ref<Tarea | null>(null)
 
   const editTitle = ref('')
   const editDescription = ref('')
   const editCompletion = ref(false)
-
-  const mode = ref<'all' | 'title'>('all')
-  const activeQuery = ref('')
 
   type ClienteOptions = {
     headers?: Record<string, string>
@@ -284,29 +221,6 @@
     },
   }
 
-  async function loadItems () {
-    if (mode.value === 'title') {
-      await getTasksByTitle(activeQuery.value)
-      return
-    }
-
-    await getAllTasks()
-  }
-
-  onMounted(async () => {
-    await loadItems()
-  })
-
-  async function onRowClick (_event: MouseEvent, row: any) {
-    const id = row?.item?.raw?.id ?? row?.item?.id ?? row?.raw?.id ?? row?.id
-    if (typeof id !== 'number') {
-      console.log('Error consiguiendo ID')
-      return
-    }
-
-    await getTaskById(id)
-  }
-
   function getCookie (name: string): string {
     return document.cookie
       .split('; ')
@@ -320,64 +234,20 @@
     return response.text()
   }
 
-  async function getAllTasks () {
-    loading.value = true
-    try {
-      const tareasResponse = await cliente.get<{
-        mensaje?: string
-        total?: number
-        tareas?: Tarea[]
-      }>(`${API_BASE_URL}/tareas`)
-
-      serverItems.value = tareasResponse.data.tareas ?? []
-      totalItems.value = tareasResponse.data.total ?? serverItems.value.length
-      console.log(serverItems.value)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      console.log(`❌ Error obteniendo tareas: ${message}`)
-      serverItems.value = []
-      totalItems.value = 0
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function getTasksByTitle (q: string) {
-    loading.value = true
-    try {
-      const response = await cliente.get<{
-        mensaje?: string
-        total?: number
-        tareas?: Tarea[]
-        tarea?: Tarea
-      }>(`${API_BASE_URL}/tareas/buscar?q=${encodeURIComponent(q)}`)
-
-      const tareas = response.data.tareas ?? (response.data.tarea ? [response.data.tarea] : [])
-      serverItems.value = tareas
-      totalItems.value = response.data.total ?? tareas.length
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      console.log(`❌ Error buscando tareas: ${message}`)
-      serverItems.value = []
-      totalItems.value = 0
-    } finally {
-      loading.value = false
-    }
-  }
-
   async function getTaskById (id: number) {
     console.log('getTaskById:', id)
     detailsLoading.value = true
     try {
       const tareaEspecifica = await cliente.get<{
         tarea?: Partial<Tarea>
+        tareaDb?: Partial<Tarea>
       }>(`${API_BASE_URL}/tareas/${id}`, {
         headers: {
           'x-csrf-token': getCookie('csrf_token'),
         },
       })
 
-      const tarea = tareaEspecifica.data.tarea
+      const tarea = tareaEspecifica.data.tareaDb ?? tareaEspecifica.data.tarea
       const nextSelectedTask = tarea
         ? {
           id,
@@ -405,47 +275,29 @@
     }
   }
 
-  async function onBuscar () {
-    const q = searchInput.value.trim()
-    if (!q) {
-      console.log('Query vacio')
-      return
-    }
-
-    mode.value = 'title'
-    activeQuery.value = q
-    await loadItems()
-  }
-
-  async function onLimpiar () {
-    searchInput.value = ''
-    activeQuery.value = ''
-    mode.value = 'all'
-    await loadItems()
-  }
-
   async function onCompletadaChange (value: unknown) {
     const task = selectedTask.value
     if (!task) return
 
-    const completada = Boolean(value)
+    const completion = Boolean(value)
     detailsLoading.value = true
     try {
       const patchResponse = await cliente.patch<{
         tarea?: Partial<Tarea>
-      }>(`${API_BASE_URL}/tareas/${task.id}`, { completada })
+        tareaDb?: Partial<Tarea>
+      }>(`${API_BASE_URL}/tareas/${task.id}`, { completion })
 
-      const tarea = patchResponse.data.tarea
+      const tarea = patchResponse.data.tareaDb ?? patchResponse.data.tarea
       selectedTask.value = {
         id: task.id,
         title: tarea?.title ?? task.title,
         description: tarea?.description ?? task.description,
-        completion: tarea?.completion ?? completada,
+        completion: tarea?.completion ?? completion,
       }
 
       editCompletion.value = selectedTask.value.completion
 
-      await loadItems()
+      await tasksCardRef.value?.reload()
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.log(`❌ Error actualizando tarea (id=${task.id}): ${message}`)
@@ -468,9 +320,10 @@
 
       const putResponse = await cliente.put<{
         tarea?: Partial<Tarea>
+        tareaDb?: Partial<Tarea>
       }>(`${API_BASE_URL}/tareas/${task.id}`, payloadPut)
 
-      const tarea = putResponse.data.tarea
+      const tarea = putResponse.data.tareaDb ?? putResponse.data.tarea
       selectedTask.value = {
         id: task.id,
         title: tarea?.title ?? payloadPut.title,
@@ -482,7 +335,7 @@
       editDescription.value = selectedTask.value.description
       editCompletion.value = selectedTask.value.completion
 
-      await loadItems()
+      await tasksCardRef.value?.reload()
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.log(`❌ Error editando tarea (id=${task.id}): ${message}`)
@@ -499,6 +352,7 @@
     try {
       await cliente.delete<{
         tarea?: Partial<Tarea>
+        tareaDb?: Partial<Tarea>
       }>(`${API_BASE_URL}/tareas/${task.id}`)
 
       selectedTask.value = null
@@ -506,7 +360,7 @@
       editDescription.value = ''
       editCompletion.value = false
 
-      await loadItems()
+      await tasksCardRef.value?.reload()
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.log(`❌ Error eliminando tarea (id=${task.id}): ${message}`)
@@ -535,10 +389,3 @@
   }
 
 </script>
-
-<style scoped>
-  :deep(.v-data-table tbody tr:hover) {
-    cursor: pointer;
-    background-color: rgba(var(--v-theme-on-surface), 0.06);
-  }
-</style>
