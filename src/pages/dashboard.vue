@@ -1,5 +1,7 @@
 <template>
-  <Dashboard />
+  <div class="notebook-bg">
+    <Dashboard />
+  </div>
 </template>
 
 <script lang="ts" setup>
