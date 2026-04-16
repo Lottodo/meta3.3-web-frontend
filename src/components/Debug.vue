@@ -180,9 +180,9 @@
       // 3. Crear una nueva tarea
       logLine('3. Creando nueva tarea...')
       const nuevaTarea = {
-        titulo: 'Comprar víveres',
-        descripcion: 'Leche, huevos, pan y frutas',
-        completada: false,
+        title: 'Comprar víveres',
+        description: 'Leche, huevos, pan y frutas',
+        completion: false,
       }
 
       const crearResponse = await cliente.post<{
@@ -202,9 +202,9 @@
       // 4. Crear otra tarea
       logLine('4. Creando segunda tarea...')
       const segundaTarea = {
-        titulo: 'Estudiar Node.js',
-        descripcion: 'Repasar autenticación JWT y cookies',
-        completada: true,
+        title: 'Estudiar Node.js',
+        description: 'Repasar autenticación JWT y cookies',
+        completion: true,
       }
 
       await cliente.post(`${API_BASE_URL}/tareas`, segundaTarea, {
@@ -219,7 +219,7 @@
       logLine('5. Obteniendo todas las tareas...')
       const tareasResponse = await cliente.get<{
         total?: number
-        tareas?: Array<{ titulo?: string, completada?: boolean }>
+        tareas?: Array<{ title?: string, completion?: boolean }>
       }>(`${API_BASE_URL}/tareas`, {
         headers: {
           'x-csrf-token': getCookie('csrf_token'),
@@ -230,15 +230,15 @@
       logLine(`Total de tareas: ${String(tareasResponse.data.total ?? '(sin total)')}`)
       logLine('Lista de tareas:')
       for (const [index, tarea] of (tareasResponse.data.tareas ?? []).entries()) {
-        const estado = tarea.completada ? '✅ Completada' : '⏳ Pendiente'
-        logLine(`  ${index + 1}. ${tarea.titulo ?? '(sin título)'} - ${estado}`)
+        const estado = tarea.completion ? '✅ Completada' : '⏳ Pendiente'
+        logLine(`  ${index + 1}. ${tarea.title ?? '(sin título)'} - ${estado}`)
       }
       logLine('')
 
       // 6. Obtener una tarea específica
       logLine('6. Obteniendo tarea específica (ID: 1)...')
       const tareaEspecifica = await cliente.get<{
-        tarea?: { titulo?: string, descripcion?: string, completada?: boolean }
+        tarea?: { title?: string, description?: string, completion?: boolean }
       }>(`${API_BASE_URL}/tareas/1`, {
         headers: {
           'x-csrf-token': getCookie('csrf_token'),
@@ -247,9 +247,9 @@
 
       logLine('✅ Tarea específica obtenida')
       logLine('Detalles:')
-      logLine(`  Título: ${tareaEspecifica.data.tarea?.titulo ?? '(sin título)'}`)
-      logLine(`  Descripción: ${tareaEspecifica.data.tarea?.descripcion ?? '(sin descripción)'}`)
-      logLine(`  Estado: ${tareaEspecifica.data.tarea?.completada ? 'Completada' : 'Pendiente'}\n`)
+      logLine(`  Título: ${tareaEspecifica.data.tarea?.title ?? '(sin título)'}`)
+      logLine(`  Descripción: ${tareaEspecifica.data.tarea?.description ?? '(sin descripción)'}`)
+      logLine(`  Estado: ${tareaEspecifica.data.tarea?.completion ? 'Completada' : 'Pendiente'}\n`)
 
       // 7. Intentar acceder sin token CSRF (debería fallar)
       logLine('7. Probando protección CSRF (intento sin token CSRF)...')
@@ -310,8 +310,8 @@
         logLine(`  Error: ${message}`)
       }
 
-      logLine('\n=== Todas las pruebas completadas exitosamente ===')
-      status.value = 'Prueba completada. Revisa la salida.'
+      logLine('\n=== Todas las pruebas hechas exitosamente ===')
+      status.value = 'Prueba hecha. Revisa la salida.'
     } catch (error) {
       hasError.value = true
       const message = error instanceof Error ? error.message : String(error)
