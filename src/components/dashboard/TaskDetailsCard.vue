@@ -17,6 +17,47 @@
         label="Descripción"
         placeholder="(sin selección)"
       />
+
+      <div class="mb-4">
+        <div class="text-subtitle-2 mb-2">Tags asignados</div>
+        <div class="d-flex flex-wrap ga-2">
+          <v-chip
+            v-if="!selectedTask"
+            size="small"
+            variant="tonal"
+          >
+            Sin selección
+          </v-chip>
+
+          <v-chip
+            v-else-if="isTagsLoading"
+            size="small"
+            variant="tonal"
+          >
+            Cargando tags...
+          </v-chip>
+
+          <v-chip
+            v-for="tag in taskTags"
+            v-else
+            :key="tag.id"
+            color="primary"
+            size="small"
+            variant="tonal"
+          >
+            {{ tag.name }}
+          </v-chip>
+
+          <v-chip
+            v-if="selectedTask && !isTagsLoading && taskTags.length === 0"
+            size="small"
+            variant="outlined"
+          >
+            Sin tags asignados
+          </v-chip>
+        </div>
+      </div>
+
       <div class="d-flex align-center justify-space-between">
         <v-switch
           v-model="editCompletion"
@@ -59,6 +100,11 @@
     completion: boolean
   }
 
+  type Tag = {
+    id: number
+    name: string
+  }
+
   const props = defineProps<{
     selectedTask: Tarea | null
     apiBaseUrl?: string
@@ -72,17 +118,20 @@
   const API_BASE_URL = props.apiBaseUrl ?? '/api'
 
   const isLoading = ref(false)
+  const isTagsLoading = ref(false)
 
   const editTitle = ref('')
   const editDescription = ref('')
   const editCompletion = ref(false)
+  const taskTags = ref<Tag[]>([])
 
   watch(
     () => props.selectedTask,
-    task => {
+    async task => {
       editTitle.value = task?.title ?? ''
       editDescription.value = task?.description ?? ''
       editCompletion.value = task?.completion ?? false
+      await cargarTagsDeTarea(task?.id)
     },
     { immediate: true },
   )
@@ -105,6 +154,28 @@
   }
 
   const cliente = {
+    async get<TResponse>(url: string, options: ClienteOptions = {}) {
+      const csrfToken = getCookie('csrf_token')
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'x-csrf-token': csrfToken,
+          ...options.headers,
+        },
+        credentials: 'include',
+      })
+
+      const data = await parseBody(response)
+
+      if (!response.ok) {
+        const message = typeof data === 'string' ? data : JSON.stringify(data)
+        throw new Error(`HTTP ${response.status}: ${message}`)
+      }
+
+      return { data: data as TResponse }
+    },
+
     async put<TResponse>(url: string, body: unknown, options: ClienteOptions = {}) {
       const csrfToken = getCookie('csrf_token')
 
@@ -174,6 +245,25 @@
 
       return { data: data as TResponse }
     },
+  }
+
+  async function cargarTagsDeTarea (taskId?: number) {
+    if (!taskId) {
+      taskTags.value = []
+      return
+    }
+
+    isTagsLoading.value = true
+    try {
+      const response = await cliente.get<{ tags?: Tag[] }>(`${API_BASE_URL}/tareas/${taskId}/tags`)
+      taskTags.value = Array.isArray(response.data.tags) ? response.data.tags : []
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.log(`❌ Error obteniendo tags (tarea id=${taskId}): ${message}`)
+      taskTags.value = []
+    } finally {
+      isTagsLoading.value = false
+    }
   }
 
   async function onCompletadaChange (value: unknown) {
