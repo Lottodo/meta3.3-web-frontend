@@ -22,7 +22,7 @@ async function probarAPI () {
     console.log('1. Realizando login...')
     const loginResponse = await cliente.post(
       `${API_BASE_URL}/auth/login`,
-      { email: 'usuario@ejemplo.com' },
+      { email: 'alice@example.com', password: 'pass1' },
       {
         headers: {
           'Content-Type': 'application/json',

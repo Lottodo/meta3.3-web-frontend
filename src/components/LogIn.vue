@@ -57,7 +57,7 @@
   const password = ref('')
   const passwordRules = ref([
     (v: any) => !!v || 'Introduzca su contraseña',
-    (v: any) => (v && v.length >= 8) || 'La contraseña debe tener al menos 8 caracteres',
+    (v: any) => (v && v.length >= 4) || 'La contraseña debe tener al menos 4 caracteres',
     (v: any) => (v && v.length <= 128) || 'Contraseña demasiado larga',
   ])
 
@@ -75,7 +75,7 @@
         csrfToken?: string
       }>(
         `${API_BASE_URL}/auth/login`,
-        { email: email.value },
+        { email: email.value, password: password.value },
       )
 
       console.log('✅ Login exitoso')

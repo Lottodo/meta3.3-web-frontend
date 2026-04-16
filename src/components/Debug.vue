@@ -135,7 +135,7 @@
 
   const statusType = computed(() => (hasError.value ? 'error' : 'success'))
 
-  async function probarAPI (email = 'usuario@ejemplo.com') {
+  async function probarAPI (email = 'alice@example.com', password = 'pass1') {
     limpiar()
     logLine('=== Probando API de Tareas con JWT y Cookies HTTP-Only ===\n')
 
@@ -151,7 +151,7 @@
         csrfToken?: string
       }>(
         `${API_BASE_URL}/auth/login`,
-        { email: email },
+        { email, password },
       )
 
       logLine('✅ Login exitoso')
