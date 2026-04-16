@@ -20,41 +20,52 @@
 
       <div class="mb-4">
         <div class="text-subtitle-2 mb-2">Tags asignados</div>
-        <div class="d-flex flex-wrap ga-2">
-          <v-chip
-            v-if="!selectedTask"
-            size="small"
-            variant="tonal"
-          >
-            Sin selección
-          </v-chip>
+        <div class="d-flex align-center flex-wrap ga-2">
+          <template v-if="!selectedTask">
+            <v-chip
+              size="small"
+              variant="tonal"
+            >
+              Sin selección
+            </v-chip>
+          </template>
 
-          <v-chip
-            v-else-if="isTagsLoading"
-            size="small"
-            variant="tonal"
-          >
-            Cargando tags...
-          </v-chip>
+          <template v-else-if="isTagsLoading">
+            <v-chip
+              size="small"
+              variant="tonal"
+            >
+              Cargando tags...
+            </v-chip>
+          </template>
 
-          <v-chip
-            v-for="tag in taskTags"
-            v-else
-            :key="tag.id"
-            color="primary"
-            size="small"
-            variant="tonal"
-          >
-            {{ tag.name }}
-          </v-chip>
+          <template v-else>
+            <v-chip
+              v-for="tag in taskTags"
+              :key="tag.id"
+              color="primary"
+              size="small"
+              variant="tonal"
+            >
+              {{ tag.name }}
+            </v-chip>
 
-          <v-chip
-            v-if="selectedTask && !isTagsLoading && taskTags.length === 0"
+            <v-chip
+              v-if="taskTags.length === 0"
+              size="small"
+              variant="outlined"
+            >
+              Sin tags asignados
+            </v-chip>
+          </template>
+
+          <v-btn
+            :disabled="!selectedTask"
+            icon="mdi-plus"
             size="small"
             variant="outlined"
-          >
-            Sin tags asignados
-          </v-chip>
+            @click="abrirModalTags"
+          />
         </div>
       </div>
 
@@ -88,6 +99,79 @@
       </div>
     </v-card-text>
   </v-card>
+
+  <v-dialog
+    v-model="isTagsModalOpen"
+    max-width="720"
+  >
+    <v-card>
+      <v-card-title class="d-flex align-center ga-2">
+        <span class="text-h6">Tags disponibles</span>
+        <v-spacer />
+        <v-btn
+          icon="mdi-close"
+          size="small"
+          variant="text"
+          @click="isTagsModalOpen = false"
+        />
+      </v-card-title>
+
+      <v-card-text>
+        <div class="d-flex flex-wrap ga-2 mb-6">
+          <template v-if="isAvailableTagsLoading">
+            <v-chip
+              size="small"
+              variant="tonal"
+            >
+              Cargando tags...
+            </v-chip>
+          </template>
+
+          <template v-else>
+            <v-chip
+              v-for="tag in availableTags"
+              :key="`available-${tag.id}`"
+              clickable
+              :color="isTagLinked(tag.id) ? 'success' : 'grey'"
+              :disabled="!selectedTask || isTagUpdating(tag.id)"
+              size="small"
+              :variant="isTagLinked(tag.id) ? 'elevated' : 'outlined'"
+              @click="onToggleTag(tag)"
+            >
+              {{ tag.name }}
+            </v-chip>
+
+            <v-chip
+              v-if="availableTags.length === 0"
+              size="small"
+              variant="outlined"
+            >
+              Aún no hay tags disponibles
+            </v-chip>
+          </template>
+        </div>
+
+        <div class="d-flex align-center ga-2">
+          <v-text-field
+            v-model="newTagName"
+            autocomplete="off"
+            class="flex-grow-1"
+            hide-details
+            label="Nuevo tag"
+            placeholder="Escribe el nombre del tag"
+            @keydown.enter.prevent="onAgregarTag"
+          />
+          <v-btn
+            color="success"
+            :loading="isAddingTag"
+            @click="onAgregarTag"
+          >
+            Agregar
+          </v-btn>
+        </div>
+      </v-card-text>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup lang="ts">
@@ -119,11 +203,17 @@
 
   const isLoading = ref(false)
   const isTagsLoading = ref(false)
+  const isTagsModalOpen = ref(false)
+  const isAvailableTagsLoading = ref(false)
+  const isAddingTag = ref(false)
+  const tagsEnActualizacion = ref<number[]>([])
 
   const editTitle = ref('')
   const editDescription = ref('')
   const editCompletion = ref(false)
   const taskTags = ref<Tag[]>([])
+  const availableTags = ref<Tag[]>([])
+  const newTagName = ref('')
 
   watch(
     () => props.selectedTask,
@@ -164,6 +254,30 @@
           ...options.headers,
         },
         credentials: 'include',
+      })
+
+      const data = await parseBody(response)
+
+      if (!response.ok) {
+        const message = typeof data === 'string' ? data : JSON.stringify(data)
+        throw new Error(`HTTP ${response.status}: ${message}`)
+      }
+
+      return { data: data as TResponse }
+    },
+
+    async post<TResponse>(url: string, body: unknown, options: ClienteOptions = {}) {
+      const csrfToken = getCookie('csrf_token')
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken,
+          ...options.headers,
+        },
+        credentials: 'include',
+        body: JSON.stringify(body),
       })
 
       const data = await parseBody(response)
@@ -263,6 +377,88 @@
       taskTags.value = []
     } finally {
       isTagsLoading.value = false
+    }
+  }
+
+  async function cargarTagsDisponibles () {
+    isAvailableTagsLoading.value = true
+    try {
+      const response = await cliente.get<{ tags?: Tag[] }>(`${API_BASE_URL}/tareas/tags/disponibles`)
+      availableTags.value = Array.isArray(response.data.tags) ? response.data.tags : []
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.log(`❌ Error obteniendo tags disponibles: ${message}`)
+      availableTags.value = []
+    } finally {
+      isAvailableTagsLoading.value = false
+    }
+  }
+
+  async function abrirModalTags () {
+    isTagsModalOpen.value = true
+    await cargarTagsDisponibles()
+  }
+
+  function isTagLinked (tagId: number): boolean {
+    return taskTags.value.some(tag => tag.id === tagId)
+  }
+
+  function isTagUpdating (tagId: number): boolean {
+    return tagsEnActualizacion.value.includes(tagId)
+  }
+
+  async function onToggleTag (tag: Tag) {
+    const task = props.selectedTask
+    if (!task) return
+    if (isTagUpdating(tag.id)) return
+
+    tagsEnActualizacion.value = [...tagsEnActualizacion.value, tag.id]
+    try {
+      if (isTagLinked(tag.id)) {
+        await cliente.delete(`${API_BASE_URL}/tareas/${task.id}/tags/${tag.id}`)
+        taskTags.value = taskTags.value.filter(item => item.id !== tag.id)
+      } else {
+        await cliente.post(`${API_BASE_URL}/tareas/${task.id}/tags/${tag.id}`, {})
+        taskTags.value = [...taskTags.value, tag]
+      }
+
+      emit('reload')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.log(`❌ Error actualizando relación tarea-tag: ${message}`)
+    } finally {
+      tagsEnActualizacion.value = tagsEnActualizacion.value.filter(id => id !== tag.id)
+    }
+  }
+
+  async function onAgregarTag () {
+    const name = newTagName.value.trim()
+    if (!name) return
+
+    isAddingTag.value = true
+    try {
+      const response = await cliente.post<{ tag?: Tag }>(`${API_BASE_URL}/tareas/tags`, { name })
+      const createdTag = response.data.tag
+
+      if (createdTag && !availableTags.value.some(tag => tag.id === createdTag.id)) {
+        const nextTags = [...availableTags.value, createdTag]
+        availableTags.value = nextTags.reduce<Tag[]>((acc, tag) => {
+          const insertAt = acc.findIndex(item => item.name.localeCompare(tag.name) > 0)
+          if (insertAt === -1) {
+            acc.push(tag)
+          } else {
+            acc.splice(insertAt, 0, tag)
+          }
+          return acc
+        }, [])
+      }
+
+      newTagName.value = ''
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.log(`❌ Error creando tag: ${message}`)
+    } finally {
+      isAddingTag.value = false
     }
   }
 
