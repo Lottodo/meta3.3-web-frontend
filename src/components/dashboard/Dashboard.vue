@@ -26,10 +26,13 @@
       />
 
       <TaskDetailsCard
+        v-model:completion="editCompletion"
+        v-model:description="editDescription"
+        v-model:title="editTitle"
         :selected-task="selectedTask"
-        @reload="onReload"
-        @task-cleared="onTaskCleared"
-        @task-updated="onTaskUpdated"
+        @completion-change="onCompletadaChange"
+        @delete="onEliminar"
+        @edit="onEditar"
       />
     </div>
 
@@ -40,8 +43,8 @@
   // import type { title } from 'process'
   import { ref } from 'vue'
   import { useRouter } from 'vue-router'
-  import TaskDetailsCard from './dashboard/TaskDetailsCard.vue'
-  import TasksTableCard from './dashboard/TasksTableCard.vue'
+  import TaskDetailsCard from './TaskDetailsCard.vue'
+  import TasksTableCard from './TasksTableCard.vue'
 
   const router = useRouter()
   const API_BASE_URL = '/api'
@@ -57,6 +60,10 @@
   const detailsLoading = ref(false)
 
   const selectedTask = ref<Tarea | null>(null)
+
+  const editTitle = ref('')
+  const editDescription = ref('')
+  const editCompletion = ref(false)
 
   type ClienteOptions = {
     headers?: Record<string, string>
@@ -213,25 +220,115 @@
         : null
 
       selectedTask.value = nextSelectedTask
+
+      editTitle.value = nextSelectedTask?.title ?? ''
+      editDescription.value = nextSelectedTask?.description ?? ''
+      editCompletion.value = nextSelectedTask?.completion ?? false
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.log(`❌ Error obteniendo tarea (id=${id}): ${message}`)
       selectedTask.value = null
+
+      editTitle.value = ''
+      editDescription.value = ''
+      editCompletion.value = false
     } finally {
       detailsLoading.value = false
     }
   }
 
-  function onTaskUpdated (task: Tarea) {
-    selectedTask.value = task
+  async function onCompletadaChange (value: unknown) {
+    const task = selectedTask.value
+    if (!task) return
+
+    const completion = Boolean(value)
+    detailsLoading.value = true
+    try {
+      const patchResponse = await cliente.patch<{
+        tarea?: Partial<Tarea>
+        tareaDb?: Partial<Tarea>
+      }>(`${API_BASE_URL}/tareas/${task.id}`, { completion })
+
+      const tarea = patchResponse.data.tareaDb ?? patchResponse.data.tarea
+      selectedTask.value = {
+        id: task.id,
+        title: tarea?.title ?? task.title,
+        description: tarea?.description ?? task.description,
+        completion: tarea?.completion ?? completion,
+      }
+
+      editCompletion.value = selectedTask.value.completion
+
+      await tasksCardRef.value?.reload()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.log(`❌ Error actualizando tarea (id=${task.id}): ${message}`)
+    } finally {
+      detailsLoading.value = false
+    }
   }
 
-  function onTaskCleared () {
-    selectedTask.value = null
+  async function onEditar () {
+    const task = selectedTask.value
+    if (!task) return
+
+    detailsLoading.value = true
+    try {
+      const payloadPut = {
+        title: editTitle.value,
+        description: editDescription.value,
+        completion: editCompletion.value,
+      }
+
+      const putResponse = await cliente.put<{
+        tarea?: Partial<Tarea>
+        tareaDb?: Partial<Tarea>
+      }>(`${API_BASE_URL}/tareas/${task.id}`, payloadPut)
+
+      const tarea = putResponse.data.tareaDb ?? putResponse.data.tarea
+      selectedTask.value = {
+        id: task.id,
+        title: tarea?.title ?? payloadPut.title,
+        description: tarea?.description ?? payloadPut.description,
+        completion: tarea?.completion ?? payloadPut.completion,
+      }
+
+      editTitle.value = selectedTask.value.title
+      editDescription.value = selectedTask.value.description
+      editCompletion.value = selectedTask.value.completion
+
+      await tasksCardRef.value?.reload()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.log(`❌ Error editando tarea (id=${task.id}): ${message}`)
+    } finally {
+      detailsLoading.value = false
+    }
   }
 
-  async function onReload () {
-    await tasksCardRef.value?.reload()
+  async function onEliminar () {
+    const task = selectedTask.value
+    if (!task) return
+
+    detailsLoading.value = true
+    try {
+      await cliente.delete<{
+        tarea?: Partial<Tarea>
+        tareaDb?: Partial<Tarea>
+      }>(`${API_BASE_URL}/tareas/${task.id}`)
+
+      selectedTask.value = null
+      editTitle.value = ''
+      editDescription.value = ''
+      editCompletion.value = false
+
+      await tasksCardRef.value?.reload()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.log(`❌ Error eliminando tarea (id=${task.id}): ${message}`)
+    } finally {
+      detailsLoading.value = false
+    }
   }
 
   async function logout () {

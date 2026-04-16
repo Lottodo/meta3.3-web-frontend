@@ -21,6 +21,6 @@
 </template>
 
 <script lang="ts" setup>
-  import Debug from '@/components/Debug.vue'
-  import LogIn from '@/components/LogIn.vue'
+  import Debug from '@/components/login/Debug.vue'
+  import LogIn from '@/components/login/LogIn.vue'
 </script>
