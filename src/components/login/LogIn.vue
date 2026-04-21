@@ -2,6 +2,7 @@
   <div class="d-flex justify-center mt-6">
     <v-card
       class="w-100"
+      :class="{ 'border-error': !!errorMessage }"
       max-width="460"
       variant="elevated"
     >
@@ -35,8 +36,17 @@
           >
             Iniciar sesión
           </v-btn>
-          <p>Si no tiene una cuenta, puede <router-link to="/signup">registrarse</router-link></p>
         </v-form>
+
+        <v-alert
+          v-if="errorMessage"
+          class="mt-4 mb-4"
+          type="error"
+        >
+          {{ errorMessage }}
+        </v-alert>
+
+        <p>Si no tiene una cuenta, puede <router-link to="/signup">registrarse</router-link></p>
       </v-card-text>
     </v-card>
   </div>
@@ -49,6 +59,7 @@
   const router = useRouter()
   const form = ref()
 
+  const errorMessage = ref('')
   const email = ref('')
   const emailRules = ref([
     (v: any) => !!v || 'Introduzca su correo electrónico',
@@ -66,7 +77,12 @@
     const { valid } = await form.value.validate()
 
     // if (valid) alert('Form is valid')
-    if (!valid) return
+    if (valid) {
+      errorMessage.value = ''
+    } else {
+      errorMessage.value = 'Por favor completa todos los campos correctamente'
+      return
+    }
 
     try {
       // 1. Login para obtener tokens
@@ -100,7 +116,8 @@
     } catch (error) {
       hasError.value = true
       const message = error instanceof Error ? error.message : String(error)
-      console.log(`❌ Error en las pruebas: ${message}`)
+      console.log(`❌ Error: ${message}`)
+      errorMessage.value = message
       status.value = `Error: ${message}`
     } finally {
       isRunning.value = false
@@ -152,8 +169,15 @@
       const data = await parseBody(response)
 
       if (!response.ok) {
-        const message = typeof data === 'string' ? data : JSON.stringify(data)
-        throw new Error(`HTTP ${response.status}: ${message}`)
+        let message = ''
+        if (typeof data === 'object' && data?.error) {
+          message = data.error
+        } else if (typeof data === 'string') {
+          message = data
+        } else {
+          message = JSON.stringify(data)
+        }
+        throw new Error(message)
       }
 
       return { data: data as TResponse }
@@ -173,11 +197,26 @@
       const data = await parseBody(response)
 
       if (!response.ok) {
-        const message = typeof data === 'string' ? data : JSON.stringify(data)
-        throw new Error(`HTTP ${response.status}: ${message}`)
+        let message = ''
+        if (response.status === 502) {
+          message = 'Error en el servidor. Por favor intenta más tarde.'
+        } else if (typeof data === 'object' && data?.error) {
+          message = data.error
+        } else if (typeof data === 'string') {
+          message = data
+        } else {
+          message = `Error ${response.status}: ${JSON.stringify(data)}`
+        }
+        throw new Error(message)
       }
 
       return { data: data as TResponse }
     },
   }
 </script>
+
+<style scoped>
+  .border-error {
+    border: 2px solid rgba(255, 0, 0, 0.548) !important;
+  }
+</style>
