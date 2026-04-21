@@ -35,6 +35,7 @@
           >
             Iniciar sesión
           </v-btn>
+          <p>Si no tiene una cuenta, puede <router-link to="/signup">registrarse</router-link></p>
         </v-form>
       </v-card-text>
     </v-card>
@@ -43,7 +44,7 @@
 
 <script setup lang="ts">
   import { ref } from 'vue'
-  import { useRouter } from 'vue-router'
+  import { RouterLink, useRouter } from 'vue-router'
 
   const router = useRouter()
   const form = ref()

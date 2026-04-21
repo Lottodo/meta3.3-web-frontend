@@ -215,6 +215,12 @@
   const availableTags = ref<Tag[]>([])
   const newTagName = ref('')
 
+  const csrfTokenInicial = getCookie('csrf_token')
+  if (csrfTokenInicial) {
+    sessionStorage.setItem('csrf_token', csrfTokenInicial)
+    localStorage.setItem('csrf_token', csrfTokenInicial)
+  }
+
   watch(
     () => props.selectedTask,
     async task => {
@@ -231,10 +237,24 @@
   }
 
   function getCookie (name: string): string {
-    return document.cookie
-      .split('; ')
-      .find(row => row.startsWith(name + '='))
-      ?.split('=')[1] || ''
+    const prefix = `${name}=`
+    const cookies = document.cookie.split(';')
+
+    for (const cookie of cookies) {
+      const trimmed = cookie.trim()
+      if (trimmed.startsWith(prefix)) {
+        return decodeURIComponent(trimmed.slice(prefix.length))
+      }
+    }
+
+    return ''
+  }
+
+  function getCsrfToken (): string {
+    return getCookie('csrf_token')
+      || sessionStorage.getItem('csrf_token')
+      || localStorage.getItem('csrf_token')
+      || ''
   }
 
   async function parseBody (response: Response) {
@@ -245,7 +265,7 @@
 
   const cliente = {
     async get<TResponse>(url: string, options: ClienteOptions = {}) {
-      const csrfToken = getCookie('csrf_token')
+      const csrfToken = getCsrfToken()
 
       const response = await fetch(url, {
         method: 'GET',
@@ -267,7 +287,7 @@
     },
 
     async post<TResponse>(url: string, body: unknown, options: ClienteOptions = {}) {
-      const csrfToken = getCookie('csrf_token')
+      const csrfToken = getCsrfToken()
 
       const response = await fetch(url, {
         method: 'POST',
@@ -291,7 +311,7 @@
     },
 
     async put<TResponse>(url: string, body: unknown, options: ClienteOptions = {}) {
-      const csrfToken = getCookie('csrf_token')
+      const csrfToken = getCsrfToken()
 
       const response = await fetch(url, {
         method: 'PUT',
@@ -315,7 +335,7 @@
     },
 
     async patch<TResponse>(url: string, body: unknown, options: ClienteOptions = {}) {
-      const csrfToken = getCookie('csrf_token')
+      const csrfToken = getCsrfToken()
 
       const response = await fetch(url, {
         method: 'PATCH',
@@ -339,7 +359,7 @@
     },
 
     async delete<TResponse>(url: string, options: ClienteOptions = {}) {
-      const csrfToken = getCookie('csrf_token')
+      const csrfToken = getCsrfToken()
 
       const response = await fetch(url, {
         method: 'DELETE',
