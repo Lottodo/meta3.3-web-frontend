@@ -1,6 +1,6 @@
 <template>
   <div class="notebook-bg">
-    <Title />
+      <Title />
     <Dashboard />
   </div>
 </template>

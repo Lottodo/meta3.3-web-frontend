@@ -13,6 +13,7 @@
     "lint:fix": "eslint --fix"
   },
   "dependencies": {
+    "@fontsource/jetbrains-mono": "^5.2.8",
     "@fontsource/roboto": "^5.2.10",
     "@mdi/font": "7.4.47",
     "ajax": "^0.0.4",

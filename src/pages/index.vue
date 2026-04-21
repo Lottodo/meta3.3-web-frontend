@@ -1,9 +1,6 @@
 <template>
   <div class="notebook-bg">
-    <v-container class="py-10">
-
-      <Title />
-    </v-container>
+    <Title />
     <LogIn />
     <v-container class="py-10">
       <Debug />
