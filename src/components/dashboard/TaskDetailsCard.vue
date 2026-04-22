@@ -403,7 +403,7 @@
   async function cargarTagsDisponibles () {
     isAvailableTagsLoading.value = true
     try {
-      const response = await cliente.get<{ tags?: Tag[] }>(`${API_BASE_URL}/tareas/tags/disponibles`)
+      const response = await cliente.get<{ tags?: Tag[] }>(`${API_BASE_URL}/tags/disponibles`)
       availableTags.value = Array.isArray(response.data.tags) ? response.data.tags : []
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -457,7 +457,7 @@
 
     isAddingTag.value = true
     try {
-      const response = await cliente.post<{ tag?: Tag }>(`${API_BASE_URL}/tareas/tags`, { name })
+      const response = await cliente.post<{ tag?: Tag }>(`${API_BASE_URL}/tags`, { name })
       const createdTag = response.data.tag
 
       if (createdTag && !availableTags.value.some(tag => tag.id === createdTag.id)) {
