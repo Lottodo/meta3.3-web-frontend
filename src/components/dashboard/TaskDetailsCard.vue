@@ -61,11 +61,13 @@
 
           <v-btn
             :disabled="!selectedTask"
-            icon="mdi-plus"
-            size="small"
+            prepend-icon="mdi-plus"
+            size="smallest"
             variant="outlined"
             @click="abrirModalTags"
-          />
+          >
+            Editar tags
+          </v-btn>
         </div>
       </div>
 
@@ -170,6 +172,88 @@
           </v-btn>
         </div>
       </v-card-text>
+
+      <v-card-actions class="px-4 pb-4">
+        <v-btn
+          color="error"
+          variant="outlined"
+          @click="abrirModalEliminarTag"
+        >
+          Eliminar tags
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+
+  <!-- Modal eliminar tag -->
+  <v-dialog
+    v-model="isEliminarTagModalOpen"
+    max-width="480"
+  >
+    <v-card>
+      <v-card-title class="d-flex align-center ga-2">
+        <span class="text-h6">Eliminar tag</span>
+        <v-spacer />
+        <v-btn
+          icon="mdi-close"
+          size="small"
+          variant="text"
+          @click="cerrarModalEliminarTag"
+        />
+      </v-card-title>
+
+      <v-card-text>
+        <p class="text-body-2 text-medium-emphasis mb-4">
+          Selecciona el tag que deseas eliminar permanentemente.
+        </p>
+
+        <div class="d-flex flex-wrap ga-2">
+          <template v-if="isAvailableTagsLoading">
+            <v-chip size="small" variant="tonal">Cargando tags...</v-chip>
+          </template>
+
+          <template v-else>
+            <v-chip
+              v-for="tag in availableTags"
+              :key="`delete-${tag.id}`"
+              clickable
+              :color="tagAEliminar?.id === tag.id ? 'error' : 'grey'"
+              size="small"
+              :variant="tagAEliminar?.id === tag.id ? 'elevated' : 'outlined'"
+              @click="tagAEliminar = tagAEliminar?.id === tag.id ? null : tag"
+            >
+              {{ tag.name }}
+            </v-chip>
+
+            <v-chip v-if="availableTags.length === 0" size="small" variant="outlined">
+              No hay tags disponibles
+            </v-chip>
+          </template>
+        </div>
+
+        <v-alert
+          v-if="errorEliminarTag"
+          class="mt-4"
+          color="error"
+          density="compact"
+          icon="mdi-alert-circle"
+          variant="tonal"
+        >
+          No fue posible realizar los cambios.
+        </v-alert>
+      </v-card-text>
+
+      <v-card-actions class="px-4 pb-4 justify-end">
+        <v-btn
+          color="error"
+          :disabled="!tagAEliminar"
+          :loading="isDeletingTag"
+          variant="elevated"
+          @click="onEliminarTag"
+        >
+          Eliminar
+        </v-btn>
+      </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
@@ -206,6 +290,10 @@
   const isTagsModalOpen = ref(false)
   const isAvailableTagsLoading = ref(false)
   const isAddingTag = ref(false)
+  const isDeletingTag = ref(false)
+  const isEliminarTagModalOpen = ref(false)
+  const tagAEliminar = ref<Tag | null>(null)
+  const errorEliminarTag = ref(false)
   const tagsEnActualizacion = ref<number[]>([])
 
   const editTitle = ref('')
@@ -417,6 +505,39 @@
   async function abrirModalTags () {
     isTagsModalOpen.value = true
     await cargarTagsDisponibles()
+  }
+
+  function abrirModalEliminarTag () {
+    tagAEliminar.value = null
+    errorEliminarTag.value = false
+    isEliminarTagModalOpen.value = true
+  }
+
+  function cerrarModalEliminarTag () {
+    isEliminarTagModalOpen.value = false
+    tagAEliminar.value = null
+    errorEliminarTag.value = false
+  }
+
+  async function onEliminarTag () {
+    const tag = tagAEliminar.value
+    if (!tag) return
+
+    isDeletingTag.value = true
+    errorEliminarTag.value = false
+    try {
+      await cliente.delete(`${API_BASE_URL}/tags/${tag.id}`)
+      availableTags.value = availableTags.value.filter(t => t.id !== tag.id)
+      taskTags.value = taskTags.value.filter(t => t.id !== tag.id)
+      emit('reload')
+      cerrarModalEliminarTag()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.log(`❌ Error eliminando tag (id=${tag.id}): ${message}`)
+      errorEliminarTag.value = true
+    } finally {
+      isDeletingTag.value = false
+    }
   }
 
   function isTagLinked (tagId: number): boolean {
