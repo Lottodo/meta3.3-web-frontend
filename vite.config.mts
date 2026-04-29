@@ -1,3 +1,4 @@
+import https from 'node:https'
 import { fileURLToPath, URL } from 'node:url'
 import Vue from '@vitejs/plugin-vue'
 import Fonts from 'unplugin-fonts/vite'
@@ -8,6 +9,7 @@ import Vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
+    mkcert(),
     Vue({
       template: { transformAssetUrls },
     }),
@@ -54,5 +56,12 @@ export default defineConfig({
   server: {
     port: 3000,
     https: {},
+    proxy: {
+      '/api': {
+        target: 'https://localhost:3003',
+        changeOrigin: true,
+        agent: new https.Agent({ rejectUnauthorized: false }),
+      },
+    },
   },
 })
